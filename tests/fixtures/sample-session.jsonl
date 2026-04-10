@@ -1,0 +1,4 @@
+{"type":"user","uuid":"u1","message":{"role":"user","content":"帮我写一个函数"},"timestamp":"2026-04-09T10:00:00Z","sessionId":"sess-001"}
+{"type":"assistant","uuid":"a1","parentUuid":"u1","message":{"type":"message","role":"assistant","content":[{"type":"text","text":"好的，我来帮你写一个函数。"}],"stop_reason":"end_turn"},"timestamp":"2026-04-09T10:00:05Z","sessionId":"sess-001"}
+{"type":"user","uuid":"u2","parentUuid":"a1","message":{"role":"user","content":"请加上错误处理"},"timestamp":"2026-04-09T10:01:00Z","sessionId":"sess-001"}
+{"type":"assistant","uuid":"a2","parentUuid":"u2","message":{"type":"message","role":"assistant","content":[{"type":"text","text":"已添加错误处理逻辑，现在函数会捕获异常并返回默认值。"}],"stop_reason":"end_turn"},"timestamp":"2026-04-09T10:01:10Z","sessionId":"sess-001"}
