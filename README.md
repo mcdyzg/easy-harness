@@ -17,7 +17,6 @@ Add the following hook to your Claude Code `settings.json` to enable auto-notifi
 ```json
 {
   "hooks": {
-    "PostToolUse": [],
     "Stop": [
       {
         "name": "harness-session-end",
