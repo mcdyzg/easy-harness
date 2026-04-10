@@ -1,0 +1,11 @@
+{
+  "name": "harness-dashboard",
+  "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
+  "version": "0.1.0",
+  "skills": [
+    "./skills/harness-dashboard",
+    "./skills/harness-todo-create",
+    "./skills/harness-session-send-user-message",
+    "./skills/harness-notice-send-message"
+  ]
+}
