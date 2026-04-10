@@ -50,17 +50,28 @@ console.log(JSON.stringify(turn));
 - tmux 对话 ID
 - remote-control URL
 
-当前使用 console 输出。后续可扩展为飞书/Telegram 等推送渠道，通过实现 `MessageSender` 接口。
+#### 检查自定义发送渠道
 
-```bash
-npx tsx -e "
-import { formatNoticeMessage } from '<plugin-dir>/src/services/notice.js';
-console.log(formatNoticeMessage({
-  title: process.argv[1],
-  status: process.argv[2],
-  summary: process.argv[3],
-  tmuxSessionId: process.argv[4],
-  remoteControlUrl: process.argv[5],
-}));
-" "<title>" "<status>" "<summary>" "<tmuxSessionId>" "<remoteControlUrl>"
-```
+检查当前可用的 skills 列表中是否存在 `harness-custom-send-message` skill。
+
+- **如果存在**：调用 `harness-custom-send-message` skill，将上述通知信息作为参数传入，格式如下：
+
+  ```
+  Skill: harness-custom-send-message
+  Args: --title "<title>" --status "<status>" --summary "<summary>" --tmux-session-id "<tmuxSessionId>" --remote-control-url "<remoteControlUrl>"
+  ```
+
+- **如果不存在**：使用默认方式输出通知：
+
+  ```bash
+  npx tsx -e "
+  import { formatNoticeMessage } from '<plugin-dir>/src/services/notice.js';
+  console.log(formatNoticeMessage({
+    title: process.argv[1],
+    status: process.argv[2],
+    summary: process.argv[3],
+    tmuxSessionId: process.argv[4],
+    remoteControlUrl: process.argv[5],
+  }));
+  " "<title>" "<status>" "<summary>" "<tmuxSessionId>" "<remoteControlUrl>"
+  ```
