@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 注册 Stop hook，在 harness 管理的 tmux 会话内 Claude 完成一轮响应时，派发一个独立的临时 tmux 会话执行 `harness-notice-send-message` skill 推送通知。
+**Goal:** 注册 Stop hook，在 harness 管理的 tmux 会话内 Claude 完成一轮响应时，派发一个独立的临时 tmux 会话执行 `harness-notice-user` skill 推送通知。
 
 **Architecture:** 插件根目录新增 `hooks/hooks.json` 自动注册 Stop hook → `scripts/on-stop.sh` 处理事件、查 todoId、派发独立 tmux 会话 → 新会话内 `claude -p` 调用 skill 完成生成 + 发送 + 退出。skill SKILL.md 同步优化（显式输入、`pluginRoot` 取代 `<plugin-dir>` 占位、用 hook 传入的 transcriptPath 取代会话查找）。
 
@@ -22,7 +22,7 @@
 - `scripts/on-stop.sh` —— Stop 事件处理脚本：前缀过滤、防重入、查 todoId、派发通知会话
 
 **修改：**
-- `skills/harness-notice-send-message/SKILL.md` —— 输入扩展为 `{todoId, cwd, transcriptPath, pluginRoot}`；占位符替换；摘要约束；执行/退出语义
+- `skills/harness-notice-user/SKILL.md` —— 输入扩展为 `{todoId, cwd, transcriptPath, pluginRoot}`；占位符替换；摘要约束；执行/退出语义
 
 **删除：**
 - `hook/on-session-end.sh` —— 文件名与行为不符、从未被注册
@@ -59,7 +59,7 @@ git rm hook/on-session-end.sh
 
 This plugin registers a `Stop` hook automatically via `hooks/hooks.json`. No manual `settings.json` configuration is required.
 
-The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-send-message` skill to generate and deliver a notification.
+The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-user` skill to generate and deliver a notification.
 ```
 
 - [ ] **Step 4: 验证 `hook/` 目录是否还有别的文件，如无则同时清理**
@@ -266,7 +266,7 @@ fi
 # 7. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
 TS=$(date +%s)
 NOTICE_SESSION="notice-${TODO_ID}-${TS}"
-PROMPT="调用 harness-notice-send-message skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
+PROMPT="调用 harness-notice-user skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
 
 tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
   "claude -p $(printf '%q' "$PROMPT")" 2>/dev/null || true
@@ -305,7 +305,7 @@ git commit -m "feat: dispatch notice tmux session from Stop hook"
 ## Task 5: 重写 SKILL.md
 
 **Files:**
-- Modify: `skills/harness-notice-send-message/SKILL.md`
+- Modify: `skills/harness-notice-user/SKILL.md`
 
 - [ ] **Step 1: 完整覆盖 SKILL.md 内容**
 
@@ -313,11 +313,11 @@ git commit -m "feat: dispatch notice tmux session from Stop hook"
 
 ````markdown
 ---
-name: harness-notice-send-message
+name: harness-notice-user
 description: "Send a notification message about a harness todo item's status. Reads the Claude session JSONL log to extract the last conversation turn, generates a summary, and sends it through the configured message channel. Use when a harness session ends and needs to notify the user."
 ---
 
-# Harness Notice Send Message
+# Harness Notice User
 
 发送 harness 待办项的状态通知。从 Claude 会话日志中提取最后一轮对话，生成摘要并推送。
 
@@ -381,9 +381,9 @@ console.log(JSON.stringify(turn));
 
 #### 4a. 检查自定义渠道
 
-判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-send-message`。
+判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-notice-user`。
 
-- **若有**：调用 `harness-custom-send-message` skill，把上述五个字段作为参数传入（按该 skill 自身约定的格式）。
+- **若有**：调用 `harness-custom-notice-user` skill，把上述五个字段作为参数传入（按该 skill 自身约定的格式）。
 - **若无**：走默认渠道（4b）。
 
 #### 4b. 默认渠道（控制台输出）
@@ -410,14 +410,14 @@ stdout 会被 tmux 通知会话承接显示。
 
 - [ ] **Step 2: 验证文件被识别为合法 skill（frontmatter 完整）**
 
-Run（Grep 工具）: pattern `^name:|^description:` in `skills/harness-notice-send-message/SKILL.md`
+Run（Grep 工具）: pattern `^name:|^description:` in `skills/harness-notice-user/SKILL.md`
 Expected: 命中 `name:` 一行 + `description:` 一行（文件内 frontmatter 区段）
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add skills/harness-notice-send-message/SKILL.md
-git commit -m "feat: refine harness-notice-send-message skill inputs and execution contract"
+git add skills/harness-notice-user/SKILL.md
+git commit -m "feat: refine harness-notice-user skill inputs and execution contract"
 ```
 
 ---
@@ -428,12 +428,12 @@ git commit -m "feat: refine harness-notice-send-message skill inputs and executi
 
 - [ ] **Step 1: 复盘文件结构**
 
-Run: `git ls-files hooks/ scripts/ skills/harness-notice-send-message/ hook/ 2>/dev/null`
+Run: `git ls-files hooks/ scripts/ skills/harness-notice-user/ hook/ 2>/dev/null`
 Expected:
 ```
 hooks/hooks.json
 scripts/on-stop.sh
-skills/harness-notice-send-message/SKILL.md
+skills/harness-notice-user/SKILL.md
 ```
 （`hook/` 路径无任何输出，确认旧文件已删除）
 
@@ -447,7 +447,7 @@ Expected: `executable`
 
 - [ ] **Step 3: 复盘 SKILL.md 不再含 `<plugin-dir>` 占位**
 
-Run（Grep 工具）: pattern `<plugin-dir>` in `skills/harness-notice-send-message/SKILL.md`
+Run（Grep 工具）: pattern `<plugin-dir>` in `skills/harness-notice-user/SKILL.md`
 Expected: no matches
 
 - [ ] **Step 4: 复盘 README 不再引用旧 hook 路径**

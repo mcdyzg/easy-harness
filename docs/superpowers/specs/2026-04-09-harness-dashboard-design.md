@@ -78,7 +78,7 @@ interface TodoItem {
 1. 根据待办项 ID 从 `.harness/todos.json` 读取对应的 tmux 会话 ID
 2. 通过 `tmux send-keys` 将用户文本发送到对应 tmux 会话
 
-### 4. `/harness-notice-send-message`
+### 4. `/harness-notice-user`
 
 **触发方式：** 由 hook 在 Claude Code 对话结束后自动触发。
 
@@ -110,7 +110,7 @@ interface NoticeMessage {
 
 **触发时机：** 每次 Claude Code 对话结束后
 
-**行为：** 自动调用 `/harness-notice-send-message`，将待办项相关信息推送到外部端。
+**行为：** 自动调用 `/harness-notice-user`，将待办项相关信息推送到外部端。
 
 **配置方式：** 通过 Claude Code 的 hook 机制注册，在 `settings.json` 中配置对话结束事件的 hook。
 
@@ -147,7 +147,7 @@ harness-dashboard/
 │   │   │   └── SKILL.md
 │   │   ├── harness-session-send-user-message/
 │   │   │   └── SKILL.md
-│   │   └── harness-notice-send-message/
+│   │   └── harness-notice-user/
 │   │       └── SKILL.md
 │   ├── components/          # Ink UI 组件
 │   │   ├── Dashboard.tsx

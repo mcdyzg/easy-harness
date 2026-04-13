@@ -14,14 +14,14 @@ claude plugins install <path-to-harness-dashboard>
 
 This plugin registers a `Stop` hook automatically via `hooks/hooks.json`. No manual `settings.json` configuration is required.
 
-The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-send-message` skill to generate and deliver a notification.
+The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-user` skill to generate and deliver a notification.
 
 ## Skills
 
 - `/harness-dashboard` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
 - `/harness-session-send-user-message` — Send a message to a running Claude session
-- `/harness-notice-send-message` — Send a notification about a todo's status
+- `/harness-notice-user` — Send a notification about a todo's status
 
 ## Data
 

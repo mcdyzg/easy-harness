@@ -47,9 +47,9 @@ fi
 # 7. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
 TS=$(date +%s)
 NOTICE_SESSION="notice-${TODO_ID}-${TS}"
-PROMPT="调用 harness-notice-send-message skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
+PROMPT="调用 harness-notice-user skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
 
 tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
-  "claude -p $(printf '%q' "$PROMPT")" 2>/dev/null || true
+  "claude -p $(printf '%q' "$PROMPT")" 2>>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.err.log" || true
 
 exit 0

@@ -18,7 +18,7 @@ Replace the Ink-based interactive dashboard with a pure SKILL.md instruction tha
 | Keep | `src/ui/` | Retained as backup, no longer invoked |
 | Remove | `package.json` dependencies | `ink`, `ink-text-input`, `react`, `@types/react` |
 | No change | `store.ts`, `types.ts`, `services/` | Still used by other skills |
-| No change | Other 3 skills | `harness-todo-create`, `harness-session-send-user-message`, `harness-notice-send-message` |
+| No change | Other 3 skills | `harness-todo-create`, `harness-session-send-user-message`, `harness-notice-user` |
 
 ### SKILL.md Logic
 
@@ -55,7 +55,7 @@ Example output:
 /harness-session-send-user-message skill
     └── SKILL.md (uses tmux.ts to send message)
 
-/harness-notice-send-message skill
+/harness-notice-user skill
     └── SKILL.md (uses notice.ts to format + send)
 
 src/ui/ (backup, not invoked)

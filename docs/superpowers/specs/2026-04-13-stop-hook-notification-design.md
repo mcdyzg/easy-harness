@@ -2,12 +2,12 @@
 
 ## 目标
 
-当 harness 管理的 tmux 会话里 Claude 完成一轮响应（Stop 事件）时，自动派发一个独立的临时 Claude 会话，调用 `harness-notice-send-message` skill 生成并发送通知。
+当 harness 管理的 tmux 会话里 Claude 完成一轮响应（Stop 事件）时，自动派发一个独立的临时 Claude 会话，调用 `harness-notice-user` skill 生成并发送通知。
 
 ## 背景
 
 当前插件已有：
-- `harness-notice-send-message` skill —— 由 Claude 执行的通知生成 + 发送 skill
+- `harness-notice-user` skill —— 由 Claude 执行的通知生成 + 发送 skill
 - `hook/on-session-end.sh` —— 一个未注册的、仅 echo todoId 的脚本（要删除）
 
 缺失：
@@ -61,7 +61,7 @@
 
 ### 修改
 
-- `skills/harness-notice-send-message/SKILL.md` —— 优化输入参数与执行约束（详见下文）
+- `skills/harness-notice-user/SKILL.md` —— 优化输入参数与执行约束（详见下文）
 
 ### `hooks/hooks.json`
 
@@ -121,7 +121,7 @@ TODO_ID=$(npx tsx -e "
 # 7. 派发通知会话（名字不以 harness- 开头）
 TS=$(date +%s)
 NOTICE_SESSION="notice-${TODO_ID}-${TS}"
-PROMPT="调用 harness-notice-send-message skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}。执行完后直接退出，不要等待用户输入。"
+PROMPT="调用 harness-notice-user skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}。执行完后直接退出，不要等待用户输入。"
 
 tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
   "claude -p $(printf '%q' "$PROMPT")"
@@ -129,7 +129,7 @@ tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
 exit 0
 ```
 
-## Skill 优化（`harness-notice-send-message`）
+## Skill 优化（`harness-notice-user`）
 
 ### 输入扩展
 
@@ -147,7 +147,7 @@ exit 0
 | 会话日志查找 | 不再用 `findSessionLogFile(claudeSessionId)`，直接用 hook 传入的 `transcriptPath` 调 `getLastConversationTurn` |
 | 摘要约束 | 明确：中文、单段、50–100 字、突出本轮"做了什么 / 等待什么"，不含代码块 |
 | 状态字段 | `TodoItem.status` 已存在（`pending\|running\|done\|failed`），直接读取，不需要新造 |
-| 自定义渠道判断 | 改成"如果系统提示的 skills 列表里出现 `harness-custom-send-message`，则调用它；否则用默认 `formatNoticeMessage`" |
+| 自定义渠道判断 | 改成"如果系统提示的 skills 列表里出现 `harness-custom-notice-user`，则调用它；否则用默认 `formatNoticeMessage`" |
 | 退出语义 | skill 末尾明确：发送完成后直接结束响应（`claude -p` 跑完即退） |
 
 ### 优化后的输入/流程描述（伪代码骨架，最终写进 SKILL.md）
@@ -164,7 +164,7 @@ exit 0
   3. 基于 user + assistant 文本生成 50–100 字中文摘要
   4. 组装 NoticeMessage：
        title, status (从 TodoItem.status), summary, tmuxSessionId, remoteControlUrl
-  5. 若可用 skills 含 harness-custom-send-message：调用之
+  5. 若可用 skills 含 harness-custom-notice-user：调用之
      否则：调用 formatNoticeMessage 并 console.log
   6. 退出
 ```
@@ -183,11 +183,11 @@ exit 0
 可以验证的关键路径：
 1. 单元：`scripts/on-stop.sh` 在各种 stdin / 环境组合下的早退行为（mock `$TMUX` / `tmux display-message` / stdin JSON）
 2. 集成：手动起一个 `harness-test` tmux 会话，跑 claude，Stop 之后能看到 `tmux ls` 里出现 `notice-<id>-<ts>` 会话
-3. skill：单独用 `claude -p "调用 harness-notice-send-message skill, todoId=xxx, cwd=xxx, transcriptPath=xxx"` 验证能跑通并产出通知文本
+3. skill：单独用 `claude -p "调用 harness-notice-user skill, todoId=xxx, cwd=xxx, transcriptPath=xxx"` 验证能跑通并产出通知文本
 
 ## 非目标
 
 - 不处理 SessionEnd（仅 Stop）
 - 不做通知重试 / 持久化队列
-- 不实现 `harness-custom-send-message`（skill 检测到则调用，没有就走默认）
+- 不实现 `harness-custom-notice-user`（skill 检测到则调用，没有就走默认）
 - 不修改 README hook 安装说明（hooks.json 自动注册后 README 段落需要后续单独清理；此 spec 只负责机制本身）

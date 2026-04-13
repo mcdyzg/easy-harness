@@ -6,6 +6,6 @@
     "./skills/harness-dashboard",
     "./skills/harness-todo-create",
     "./skills/harness-session-send-user-message",
-    "./skills/harness-notice-send-message"
+    "./skills/harness-notice-user"
   ]
 }

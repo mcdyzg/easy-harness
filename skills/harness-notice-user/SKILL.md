@@ -1,9 +1,9 @@
 ---
-name: harness-notice-send-message
+name: harness-notice-user
 description: "Send a notification message about a harness todo item's status. Reads the Claude session JSONL log to extract the last conversation turn, generates a summary, and sends it through the configured message channel. Use when a harness session ends and needs to notify the user."
 ---
 
-# Harness Notice Send Message
+# Harness Notice User
 
 发送 harness 待办项的状态通知。从 Claude 会话日志中提取最后一轮对话，生成摘要并推送。
 

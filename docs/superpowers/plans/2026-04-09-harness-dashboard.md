@@ -102,7 +102,7 @@ export default defineConfig({
     "./skills/harness-dashboard",
     "./skills/harness-todo-create",
     "./skills/harness-session-send-user-message",
-    "./skills/harness-notice-send-message"
+    "./skills/harness-notice-user"
   ]
 }
 ```
@@ -1114,7 +1114,7 @@ git commit -m "feat: add Ink dashboard UI with TodoList, TodoForm, ExecutePrompt
 - Create: `harness-dashboard/skills/harness-dashboard/SKILL.md`
 - Create: `harness-dashboard/skills/harness-todo-create/SKILL.md`
 - Create: `harness-dashboard/skills/harness-session-send-user-message/SKILL.md`
-- Create: `harness-dashboard/skills/harness-notice-send-message/SKILL.md`
+- Create: `harness-dashboard/skills/harness-notice-user/SKILL.md`
 
 - [ ] **Step 1: Write harness-dashboard SKILL.md**
 
@@ -1280,15 +1280,15 @@ tmux send-keys -t "<tmuxSessionId>" '<用户输入的文本>' Enter
 - 如果 tmux 会话不存在，告知用户会话已关闭
 ```
 
-- [ ] **Step 4: Write harness-notice-send-message SKILL.md**
+- [ ] **Step 4: Write harness-notice-user SKILL.md**
 
 ```markdown
 ---
-name: harness-notice-send-message
+name: harness-notice-user
 description: "Send a notification message about a harness todo item's status. Reads the Claude session JSONL log to extract the last conversation turn, generates a summary, and sends it through the configured message channel. Use when a harness session ends and needs to notify the user."
 ---
 
-# Harness Notice Send Message
+# Harness Notice User
 
 发送待办项状态通知。从 Claude 会话日志中提取最后一轮对话，生成摘要并推送。
 
@@ -1460,7 +1460,7 @@ Add the following hook to your Claude Code `settings.json` to enable auto-notifi
 - `/harness-dashboard` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
 - `/harness-session-send-user-message` — Send a message to a running Claude session
-- `/harness-notice-send-message` — Send a notification about a todo's status
+- `/harness-notice-user` — Send a notification about a todo's status
 
 ## Data
 
@@ -1504,8 +1504,8 @@ Expected output:
 ./skills
 ./skills/harness-dashboard
 ./skills/harness-dashboard/SKILL.md
-./skills/harness-notice-send-message
-./skills/harness-notice-send-message/SKILL.md
+./skills/harness-notice-user
+./skills/harness-notice-user/SKILL.md
 ./skills/harness-session-send-user-message
 ./skills/harness-session-send-user-message/SKILL.md
 ./skills/harness-todo-create
