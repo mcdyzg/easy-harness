@@ -38,11 +38,11 @@ describe("lookupTodo", () => {
     });
 
     it("序号 0 抛 OUT_OF_RANGE", () => {
-      expect(() => lookupTodo("0", items)).toThrow(LookupError);
-      try { lookupTodo("0", items); } catch (e) {
-        expect((e as LookupError).code).toBe("OUT_OF_RANGE");
-        expect((e as LookupError).message).toContain("有效范围 1–3");
-      }
+      let caught: unknown;
+      try { lookupTodo("0", items); } catch (e) { caught = e; }
+      expect(caught).toBeInstanceOf(LookupError);
+      expect((caught as LookupError).code).toBe("OUT_OF_RANGE");
+      expect((caught as LookupError).message).toContain("有效范围 1–3");
     });
 
     it("序号超过长度抛 OUT_OF_RANGE", () => {
@@ -92,10 +92,10 @@ describe("lookupTodo", () => {
     });
 
     it("零命中抛 NOT_FOUND", () => {
-      expect(() => lookupTodo("不存在的关键词", items)).toThrow(LookupError);
-      try { lookupTodo("不存在的关键词", items); } catch (e) {
-        expect((e as LookupError).code).toBe("NOT_FOUND");
-      }
+      let caught: unknown;
+      try { lookupTodo("不存在的关键词", items); } catch (e) { caught = e; }
+      expect(caught).toBeInstanceOf(LookupError);
+      expect((caught as LookupError).code).toBe("NOT_FOUND");
     });
 
     it("仅匹配 title，不匹配 description", () => {
@@ -124,9 +124,16 @@ describe("resolveCandidate", () => {
   });
 
   it("非纯数字且未匹配 ID 抛 NOT_FOUND（不再做模糊匹配）", () => {
-    expect(() => resolveCandidate("登录", candidates)).toThrow(LookupError);
-    try { resolveCandidate("登录", candidates); } catch (e) {
-      expect((e as LookupError).code).toBe("NOT_FOUND");
-    }
+    let caught: unknown;
+    try { resolveCandidate("登录", candidates); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+    expect((caught as LookupError).code).toBe("NOT_FOUND");
+  });
+
+  it("ID 大小写敏感（无模糊回退）", () => {
+    let caught: unknown;
+    try { resolveCandidate("C1AAAABBBB11", candidates); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+    expect((caught as LookupError).code).toBe("NOT_FOUND");
   });
 });

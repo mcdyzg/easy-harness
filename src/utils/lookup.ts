@@ -14,13 +14,13 @@ export class LookupError extends Error {
   }
 }
 
-const NUMERIC = /^\d+$/;
+const INDEX_RE = /^\d+$/;
 
 // 首次查找：序号 → ID 精确 → title 模糊（substring，大小写不敏感）
 export function lookupTodo(input: string, items: TodoItem[]): LookupResult {
   const trimmed = input.trim();
 
-  if (NUMERIC.test(trimmed)) {
+  if (INDEX_RE.test(trimmed)) {
     const idx = parseInt(trimmed, 10) - 1;
     if (idx < 0 || idx >= items.length) {
       throw new LookupError(
@@ -57,7 +57,7 @@ export function resolveCandidate(
 ): TodoItem {
   const trimmed = input.trim();
 
-  if (NUMERIC.test(trimmed)) {
+  if (INDEX_RE.test(trimmed)) {
     const idx = parseInt(trimmed, 10) - 1;
     if (idx < 0 || idx >= candidates.length) {
       throw new LookupError(
@@ -73,6 +73,6 @@ export function resolveCandidate(
 
   throw new LookupError(
     "NOT_FOUND",
-    "仍未能定位：请重新执行 /harness-session-send-user-message",
+    "仍未能定位：请按候选列表中的序号或完整 ID 重试",
   );
 }
