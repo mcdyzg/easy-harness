@@ -32,5 +32,24 @@ if [ -z "$CWD" ]; then
   exit 0
 fi
 
-# 6. 后续：查 todoId、派发通知会话（Task 4 实现）
+# 6. 从 tmux session 名查 todoId
+TODO_ID=$(npx --yes tsx -e "
+  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.js';
+  const store = new TodoStore(process.argv[1]);
+  const todo = store.list().find(t => t.tmuxSessionId === process.argv[2]);
+  if (todo) console.log(todo.id);
+" "$CWD" "$TMUX_SESSION" 2>/dev/null)
+
+if [ -z "$TODO_ID" ]; then
+  exit 0
+fi
+
+# 7. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
+TS=$(date +%s)
+NOTICE_SESSION="notice-${TODO_ID}-${TS}"
+PROMPT="调用 harness-notice-send-message skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
+
+tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
+  "claude -p $(printf '%q' "$PROMPT")" 2>/dev/null || true
+
 exit 0
