@@ -20,8 +20,8 @@ description: "Send a user message to an existing Claude Code session linked to a
 
 ```bash
 npx tsx -e "
-import { TodoStore } from '<plugin-dir>/src/store.js';
-import { lookupTodo, LookupError } from '<plugin-dir>/src/utils/lookup.js';
+import { TodoStore } from '<plugin-dir>/src/store.ts';
+import { lookupTodo, LookupError } from '<plugin-dir>/src/utils/lookup.ts';
 const store = new TodoStore(process.argv[1]);
 const items = store.list();
 try {
@@ -63,7 +63,7 @@ stderr + 非零退出 → 把 `message` 字段直接展示给用户。
 
 ```bash
 npx tsx -e "
-import { resolveCandidate, LookupError } from '<plugin-dir>/src/utils/lookup.js';
+import { resolveCandidate, LookupError } from '<plugin-dir>/src/utils/lookup.ts';
 const candidates = JSON.parse(process.argv[1]);
 try {
   const todo = resolveCandidate(process.argv[2], candidates);

@@ -52,6 +52,13 @@ describe("lookupTodo", () => {
     it("空列表上的序号查询抛 OUT_OF_RANGE", () => {
       expect(() => lookupTodo("1", [])).toThrow(LookupError);
     });
+
+    it("负数序号抛 OUT_OF_RANGE", () => {
+      let caught: unknown;
+      try { lookupTodo("-1", items); } catch (e) { caught = e; }
+      expect(caught).toBeInstanceOf(LookupError);
+      expect((caught as LookupError).code).toBe("OUT_OF_RANGE");
+    });
   });
 
   describe("ID 精确匹配", () => {
@@ -103,6 +110,19 @@ describe("lookupTodo", () => {
       expect(() => lookupTodo("xyz", list)).toThrow(LookupError);
     });
   });
+
+  it("空字符串抛 NOT_FOUND", () => {
+    let caught: unknown;
+    try { lookupTodo("", items); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+    expect((caught as LookupError).code).toBe("NOT_FOUND");
+  });
+
+  it("全空白抛 NOT_FOUND", () => {
+    let caught: unknown;
+    try { lookupTodo("   ", items); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+  });
 });
 
 describe("resolveCandidate", () => {
@@ -133,6 +153,20 @@ describe("resolveCandidate", () => {
   it("ID 大小写敏感（无模糊回退）", () => {
     let caught: unknown;
     try { resolveCandidate("C1AAAABBBB11", candidates); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+    expect((caught as LookupError).code).toBe("NOT_FOUND");
+  });
+
+  it("负数序号抛 OUT_OF_RANGE", () => {
+    let caught: unknown;
+    try { resolveCandidate("-1", candidates); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(LookupError);
+    expect((caught as LookupError).code).toBe("OUT_OF_RANGE");
+  });
+
+  it("空字符串抛 NOT_FOUND", () => {
+    let caught: unknown;
+    try { resolveCandidate("", candidates); } catch (e) { caught = e; }
     expect(caught).toBeInstanceOf(LookupError);
     expect((caught as LookupError).code).toBe("NOT_FOUND");
   });

@@ -14,11 +14,15 @@ export class LookupError extends Error {
   }
 }
 
-const INDEX_RE = /^\d+$/;
+const INDEX_RE = /^-?\d+$/;
 
 // 首次查找：序号 → ID 精确 → title 模糊（substring，大小写不敏感）
 export function lookupTodo(input: string, items: TodoItem[]): LookupResult {
   const trimmed = input.trim();
+
+  if (trimmed.length === 0) {
+    throw new LookupError("NOT_FOUND", "标识不能为空");
+  }
 
   if (INDEX_RE.test(trimmed)) {
     const idx = parseInt(trimmed, 10) - 1;
@@ -56,6 +60,10 @@ export function resolveCandidate(
   candidates: TodoItem[],
 ): TodoItem {
   const trimmed = input.trim();
+
+  if (trimmed.length === 0) {
+    throw new LookupError("NOT_FOUND", "标识不能为空");
+  }
 
   if (INDEX_RE.test(trimmed)) {
     const idx = parseInt(trimmed, 10) - 1;
