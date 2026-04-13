@@ -75,3 +75,12 @@ store.update(process.argv[2], {
 });
 " "<cwd>" "<id>" "<tmuxSessionId>" "<remoteControlUrl>" "<claudeSessionId>" "<claudeSessionName>"
 ```
+
+### 5. 触发扩展钩子（可选）
+
+**不影响上述默认流程**。上面步骤 2–4 全部完成后，再额外判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-todo-create`。
+
+- **若有**：调用 `harness-custom-todo-create` skill，把已写入记录的完整字段作为参数传入 —— 至少包括 `cwd, id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`。该 skill 只做**额外增强**（例如同步到远端任务系统、推送创建通知、补写自定义元数据等），不应回滚或修改已写入的核心字段。
+- **若无**：什么也不做，直接结束。
+
+注意：`harness-custom-todo-create` 是"扩展钩子"而非"替换实现"，不存在时默认流程也能完整工作。
