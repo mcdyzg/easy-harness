@@ -9,7 +9,7 @@
     {
       "name": "harness-dashboard",
       "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./",
       "author": {
         "name": "harness",
