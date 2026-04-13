@@ -141,7 +141,7 @@ harness-dashboard/
 ├── tsconfig.json
 ├── src/
 │   ├── skills/
-│   │   ├── harness-dashboard/
+│   │   ├── harness-todo-list/
 │   │   │   └── SKILL.md
 │   │   ├── harness-todo-create/
 │   │   │   └── SKILL.md

@@ -1,9 +1,9 @@
 ---
-name: harness-dashboard
-description: "Open the Harness Dashboard to view todo items. Use when the user wants to view todo list status in the harness system. Triggers on: /harness-dashboard, 'open dashboard', 'show todos', 'harness list'."
+name: harness-todo-list
+description: "List harness todo items. Use when the user wants to view the todo list / dashboard in the harness system. Triggers on: /harness-todo-list, 'open dashboard', 'show todos', 'harness list'."
 ---
 
-# Harness Dashboard
+# Harness Todo List
 
 展示当前工作目录下的待办项列表。
 

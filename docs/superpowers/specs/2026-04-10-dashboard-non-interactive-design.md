@@ -46,7 +46,7 @@ Example output:
 ### Architecture After Change
 
 ```
-/harness-dashboard skill
+/harness-todo-list skill
     └── SKILL.md (instructs Claude to read JSON + render Markdown)
 
 /harness-todo-create skill

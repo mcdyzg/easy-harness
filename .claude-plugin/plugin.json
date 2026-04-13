@@ -3,7 +3,7 @@
   "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
   "version": "0.1.0",
   "skills": [
-    "./skills/harness-dashboard",
+    "./skills/harness-todo-list",
     "./skills/harness-todo-create",
     "./skills/harness-todo-remove",
     "./skills/harness-session-send-user-message",

@@ -18,7 +18,7 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 
 ## Skills
 
-- `/harness-dashboard` — Open the terminal todo management UI
+- `/harness-todo-list` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
 - `/harness-session-send-user-message` — Send a message to a running Claude session
 - `/harness-notice-user` — Send a notification about a todo's status
