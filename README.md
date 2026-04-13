@@ -2,6 +2,18 @@
 
 Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions.
 
+## Requirements
+
+- **tmux**（强依赖）：本插件所有会话管理、消息发送与通知钩子都基于 tmux 实现，使用前请确保已安装并可在 `PATH` 中调用。
+
+  ```bash
+  # macOS
+  brew install tmux
+
+  # Debian / Ubuntu
+  sudo apt-get install tmux
+  ```
+
 ## Installation
 
 在 Claude Code 中通过 GitHub marketplace 安装：
