@@ -328,7 +328,7 @@ description: "Send a notification message about a harness todo item's status. Re
 - `todoId` —— 待办项 ID
 - `cwd` —— 待办项所在工作目录（用于定位 `.harness/todos.json`）
 - `transcriptPath` —— 当前 Claude 会话的 transcript JSONL 文件绝对路径
-- `pluginRoot` —— harness-dashboard 插件根目录绝对路径
+- `pluginRoot` —— easy-harness 插件根目录绝对路径
 
 ## 处理流程
 

@@ -1,13 +1,13 @@
 {
-  "name": "harness-dashboard-local",
-  "description": "Local marketplace for harness-dashboard plugin",
+  "name": "easy-harness-local",
+  "description": "Local marketplace for easy-harness plugin",
   "owner": {
     "name": "harness",
     "email": "harness@local"
   },
   "plugins": [
     {
-      "name": "harness-dashboard",
+      "name": "easy-harness",
       "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
       "version": "0.1.1",
       "source": "./",

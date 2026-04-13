@@ -8,30 +8,30 @@
 
 **Tech Stack:** TypeScript, Ink (React for CLI), tmux, vitest, ink-testing-library
 
-**Spec:** `docs/superpowers/specs/2026-04-09-harness-dashboard-design.md`
+**Spec:** `docs/superpowers/specs/2026-04-09-easy-harness-design.md`
 
 ---
 
 ### Task 1: Project Scaffolding
 
 **Files:**
-- Create: `harness-dashboard/package.json`
-- Create: `harness-dashboard/tsconfig.json`
-- Create: `harness-dashboard/vitest.config.ts`
-- Create: `harness-dashboard/.claude-plugin/plugin.json`
+- Create: `easy-harness/package.json`
+- Create: `easy-harness/tsconfig.json`
+- Create: `easy-harness/vitest.config.ts`
+- Create: `easy-harness/.claude-plugin/plugin.json`
 
 - [ ] **Step 1: Create project directory**
 
 ```bash
-mkdir -p harness-dashboard/.claude-plugin
-cd harness-dashboard
+mkdir -p easy-harness/.claude-plugin
+cd easy-harness
 ```
 
 - [ ] **Step 2: Write package.json**
 
 ```json
 {
-  "name": "harness-dashboard",
+  "name": "easy-harness",
   "version": "0.1.0",
   "description": "Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions",
   "type": "module",
@@ -95,11 +95,11 @@ export default defineConfig({
 
 ```json
 {
-  "name": "harness-dashboard",
+  "name": "easy-harness",
   "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
   "version": "0.1.0",
   "skills": [
-    "./skills/harness-dashboard",
+    "./skills/easy-harness",
     "./skills/harness-todo-create",
     "./skills/harness-session-send-user-message",
     "./skills/harness-notice-user"
@@ -110,7 +110,7 @@ export default defineConfig({
 - [ ] **Step 6: Install dependencies**
 
 ```bash
-cd harness-dashboard && npm install
+cd easy-harness && npm install
 ```
 
 - [ ] **Step 7: Commit**
@@ -118,7 +118,7 @@ cd harness-dashboard && npm install
 ```bash
 git init
 git add .
-git commit -m "chore: scaffold harness-dashboard project"
+git commit -m "chore: scaffold easy-harness project"
 ```
 
 ---
@@ -126,7 +126,7 @@ git commit -m "chore: scaffold harness-dashboard project"
 ### Task 2: Types Definition
 
 **Files:**
-- Create: `harness-dashboard/src/types.ts`
+- Create: `easy-harness/src/types.ts`
 
 - [ ] **Step 1: Write TodoItem interface and related types**
 
@@ -169,8 +169,8 @@ git commit -m "feat: add TodoItem and NoticeMessage type definitions"
 ### Task 3: ID Utility (TDD)
 
 **Files:**
-- Create: `harness-dashboard/tests/utils/id.test.ts`
-- Create: `harness-dashboard/src/utils/id.ts`
+- Create: `easy-harness/tests/utils/id.test.ts`
+- Create: `easy-harness/src/utils/id.ts`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -200,7 +200,7 @@ describe("generateId", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd harness-dashboard && npx vitest run tests/utils/id.test.ts`
+Run: `cd easy-harness && npx vitest run tests/utils/id.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write minimal implementation**
@@ -215,7 +215,7 @@ export function generateId(): string {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd harness-dashboard && npx vitest run tests/utils/id.test.ts`
+Run: `cd easy-harness && npx vitest run tests/utils/id.test.ts`
 Expected: PASS — all 3 tests green
 
 - [ ] **Step 5: Commit**
@@ -230,8 +230,8 @@ git commit -m "feat: add ID generation utility"
 ### Task 4: Todo Store (TDD)
 
 **Files:**
-- Create: `harness-dashboard/tests/store.test.ts`
-- Create: `harness-dashboard/src/store.ts`
+- Create: `easy-harness/tests/store.test.ts`
+- Create: `easy-harness/src/store.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -317,7 +317,7 @@ describe("TodoStore", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd harness-dashboard && npx vitest run tests/store.test.ts`
+Run: `cd easy-harness && npx vitest run tests/store.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write minimal implementation**
@@ -385,7 +385,7 @@ export class TodoStore {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd harness-dashboard && npx vitest run tests/store.test.ts`
+Run: `cd easy-harness && npx vitest run tests/store.test.ts`
 Expected: PASS — all 7 tests green
 
 - [ ] **Step 5: Commit**
@@ -400,8 +400,8 @@ git commit -m "feat: add TodoStore with JSON file persistence"
 ### Task 5: Tmux Service (TDD)
 
 **Files:**
-- Create: `harness-dashboard/tests/services/tmux.test.ts`
-- Create: `harness-dashboard/src/services/tmux.ts`
+- Create: `easy-harness/tests/services/tmux.test.ts`
+- Create: `easy-harness/src/services/tmux.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -464,7 +464,7 @@ describe("buildClaudeCommand", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/tmux.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/tmux.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write minimal implementation**
@@ -525,7 +525,7 @@ export function sendKeysToSession(sessionName: string, text: string): void {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/tmux.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/tmux.test.ts`
 Expected: PASS — all 5 tests green
 
 - [ ] **Step 5: Commit**
@@ -540,9 +540,9 @@ git commit -m "feat: add tmux service with command builders"
 ### Task 6: Session Log Parser (TDD)
 
 **Files:**
-- Create: `harness-dashboard/tests/services/session-log.test.ts`
-- Create: `harness-dashboard/src/services/session-log.ts`
-- Create: `harness-dashboard/tests/fixtures/sample-session.jsonl`
+- Create: `easy-harness/tests/services/session-log.test.ts`
+- Create: `easy-harness/src/services/session-log.ts`
+- Create: `easy-harness/tests/fixtures/sample-session.jsonl`
 
 - [ ] **Step 1: Create test fixture**
 
@@ -591,7 +591,7 @@ describe("findSessionLogFile", () => {
 
 - [ ] **Step 3: Run test to verify it fails**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/session-log.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/session-log.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 4: Write minimal implementation**
@@ -703,7 +703,7 @@ export function findSessionLogFile(
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/session-log.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/session-log.test.ts`
 Expected: PASS — all 4 tests green
 
 - [ ] **Step 6: Commit**
@@ -718,8 +718,8 @@ git commit -m "feat: add session log parser for JSONL conversation extraction"
 ### Task 7: Notice Service (TDD)
 
 **Files:**
-- Create: `harness-dashboard/tests/services/notice.test.ts`
-- Create: `harness-dashboard/src/services/notice.ts`
+- Create: `easy-harness/tests/services/notice.test.ts`
+- Create: `easy-harness/src/services/notice.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -767,7 +767,7 @@ describe("ConsoleMessageSender", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/notice.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/notice.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write minimal implementation**
@@ -794,7 +794,7 @@ export class ConsoleMessageSender implements MessageSender {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd harness-dashboard && npx vitest run tests/services/notice.test.ts`
+Run: `cd easy-harness && npx vitest run tests/services/notice.test.ts`
 Expected: PASS — all 2 tests green
 
 - [ ] **Step 5: Commit**
@@ -809,11 +809,11 @@ git commit -m "feat: add notice service with abstract MessageSender interface"
 ### Task 8: Ink Dashboard UI
 
 **Files:**
-- Create: `harness-dashboard/src/ui/run.tsx`
-- Create: `harness-dashboard/src/ui/app.tsx`
-- Create: `harness-dashboard/src/ui/components/TodoList.tsx`
-- Create: `harness-dashboard/src/ui/components/TodoForm.tsx`
-- Create: `harness-dashboard/src/ui/components/ExecutePrompt.tsx`
+- Create: `easy-harness/src/ui/run.tsx`
+- Create: `easy-harness/src/ui/app.tsx`
+- Create: `easy-harness/src/ui/components/TodoList.tsx`
+- Create: `easy-harness/src/ui/components/TodoForm.tsx`
+- Create: `easy-harness/src/ui/components/ExecutePrompt.tsx`
 
 这个任务构建完整的 Ink 终端 UI。由于 Ink 组件依赖终端环境，测试以手动验证为主。
 
@@ -1096,7 +1096,7 @@ export function ExecutePrompt({ todoId, onSubmit, onCancel }: ExecutePromptProps
 
 - [ ] **Step 6: Verify build**
 
-Run: `cd harness-dashboard && npx tsc --noEmit`
+Run: `cd easy-harness && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 7: Commit**
@@ -1111,17 +1111,17 @@ git commit -m "feat: add Ink dashboard UI with TodoList, TodoForm, ExecutePrompt
 ### Task 9: SKILL.md Files
 
 **Files:**
-- Create: `harness-dashboard/skills/harness-dashboard/SKILL.md`
-- Create: `harness-dashboard/skills/harness-todo-create/SKILL.md`
-- Create: `harness-dashboard/skills/harness-session-send-user-message/SKILL.md`
-- Create: `harness-dashboard/skills/harness-notice-user/SKILL.md`
+- Create: `easy-harness/skills/easy-harness/SKILL.md`
+- Create: `easy-harness/skills/harness-todo-create/SKILL.md`
+- Create: `easy-harness/skills/harness-session-send-user-message/SKILL.md`
+- Create: `easy-harness/skills/harness-notice-user/SKILL.md`
 
-- [ ] **Step 1: Write harness-dashboard SKILL.md**
+- [ ] **Step 1: Write easy-harness SKILL.md**
 
 ```markdown
 ---
-name: harness-dashboard
-description: "Open the Harness Dashboard terminal UI to manage todo items. Use when the user wants to view, create, edit, delete, or execute todo items in the harness system. Triggers on: /harness-dashboard, 'open dashboard', 'show todos', 'harness list'."
+name: easy-harness
+description: "Open the Harness Dashboard terminal UI to manage todo items. Use when the user wants to view, create, edit, delete, or execute todo items in the harness system. Triggers on: /easy-harness, 'open dashboard', 'show todos', 'harness list'."
 ---
 
 # Harness Dashboard
@@ -1363,7 +1363,7 @@ git commit -m "feat: add SKILL.md files for all 4 skills"
 ### Task 10: Hook Script
 
 **Files:**
-- Create: `harness-dashboard/hook/on-session-end.sh`
+- Create: `easy-harness/hook/on-session-end.sh`
 
 - [ ] **Step 1: Write the hook script**
 
@@ -1420,7 +1420,7 @@ git commit -m "feat: add session-end hook script"
 ### Task 11: Hook Configuration Documentation
 
 **Files:**
-- Create: `harness-dashboard/README.md`
+- Create: `easy-harness/README.md`
 
 - [ ] **Step 1: Write README with installation and hook setup instructions**
 
@@ -1434,7 +1434,7 @@ Claude Code skill package for terminal-based todo management with tmux-backed Cl
 Install this plugin in Claude Code:
 
 \`\`\`bash
-claude plugins install <path-to-harness-dashboard>
+claude plugins install <path-to-easy-harness>
 \`\`\`
 
 ## Hook Setup
@@ -1457,7 +1457,7 @@ Add the following hook to your Claude Code `settings.json` to enable auto-notifi
 
 ## Skills
 
-- `/harness-dashboard` — Open the terminal todo management UI
+- `/easy-harness` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
 - `/harness-session-send-user-message` — Send a message to a running Claude session
 - `/harness-notice-user` — Send a notification about a todo's status
@@ -1480,17 +1480,17 @@ git commit -m "docs: add README with installation and hook setup instructions"
 
 - [ ] **Step 1: Run all tests**
 
-Run: `cd harness-dashboard && npx vitest run`
+Run: `cd easy-harness && npx vitest run`
 Expected: All tests pass
 
 - [ ] **Step 2: Verify TypeScript compilation**
 
-Run: `cd harness-dashboard && npx tsc --noEmit`
+Run: `cd easy-harness && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 3: Verify directory structure**
 
-Run: `cd harness-dashboard && find . -not -path './node_modules/*' -not -path './dist/*' -not -name '.DS_Store' | sort`
+Run: `cd easy-harness && find . -not -path './node_modules/*' -not -path './dist/*' -not -name '.DS_Store' | sort`
 
 Expected output:
 ```
@@ -1502,8 +1502,8 @@ Expected output:
 ./package.json
 ./README.md
 ./skills
-./skills/harness-dashboard
-./skills/harness-dashboard/SKILL.md
+./skills/easy-harness
+./skills/easy-harness/SKILL.md
 ./skills/harness-notice-user
 ./skills/harness-notice-user/SKILL.md
 ./skills/harness-session-send-user-message

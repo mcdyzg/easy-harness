@@ -1,5 +1,5 @@
 {
-  "name": "harness-dashboard",
+  "name": "easy-harness",
   "version": "0.1.1",
   "description": "Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions",
   "type": "module",

@@ -2,7 +2,7 @@
 
 ## Background
 
-Ink (React for CLI) applications cannot run inside Claude Code's Bash tool because it lacks an interactive terminal (no stdin control, no cursor positioning). The `/harness-dashboard` skill needs to be redesigned as a non-interactive, pure-instruction skill.
+Ink (React for CLI) applications cannot run inside Claude Code's Bash tool because it lacks an interactive terminal (no stdin control, no cursor positioning). The `/harness-todo-list` skill needs to be redesigned as a non-interactive, pure-instruction skill.
 
 ## Design
 
@@ -14,7 +14,7 @@ Replace the Ink-based interactive dashboard with a pure SKILL.md instruction tha
 
 | Action | Target | Detail |
 |--------|--------|--------|
-| Rewrite | `skills/harness-dashboard/SKILL.md` | Pure instruction skill: read JSON, render Markdown table |
+| Rewrite | `skills/easy-harness/SKILL.md` | Pure instruction skill: read JSON, render Markdown table |
 | Keep | `src/ui/` | Retained as backup, no longer invoked |
 | Remove | `package.json` dependencies | `ink`, `ink-text-input`, `react`, `@types/react` |
 | No change | `store.ts`, `types.ts`, `services/` | Still used by other skills |

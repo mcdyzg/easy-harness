@@ -1,5 +1,5 @@
 {
-  "name": "harness-dashboard",
+  "name": "easy-harness",
   "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
   "version": "0.1.1",
   "skills": [

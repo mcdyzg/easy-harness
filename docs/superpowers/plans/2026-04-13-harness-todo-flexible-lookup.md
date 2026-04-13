@@ -175,7 +175,7 @@ describe("resolveCandidate", () => {
 - [ ] **Step 1.2: 跑测试，确认全部失败**
 
 ```bash
-cd /Users/bytedance/haha/x/agent/claude-about/harness-dashboard
+cd /Users/bytedance/haha/x/agent/claude-about/easy-harness
 npx vitest run tests/utils/lookup.test.ts
 ```
 

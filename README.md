@@ -7,7 +7,7 @@ Claude Code skill package for terminal-based todo management with tmux-backed Cl
 Install this plugin in Claude Code:
 
 ```bash
-claude plugins install <path-to-harness-dashboard>
+claude plugins install <path-to-easy-harness>
 ```
 
 ## Hook Setup
