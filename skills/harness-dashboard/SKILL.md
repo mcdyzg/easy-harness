@@ -36,5 +36,6 @@ description: "Open the Harness Dashboard to view todo items. Use when the user w
 ## 相关 Skill
 
 - `/harness-todo-create` — 创建新待办项并启动 Claude 会话
+- `/harness-todo-remove` — 删除待办项并关闭其 tmux 会话
 - `/harness-session-send-user-message` — 向运行中的会话发送消息
 - `/harness-notice-user` — 发送通知消息

@@ -5,6 +5,7 @@
   "skills": [
     "./skills/harness-dashboard",
     "./skills/harness-todo-create",
+    "./skills/harness-todo-remove",
     "./skills/harness-session-send-user-message",
     "./skills/harness-notice-user"
   ]
