@@ -22,7 +22,7 @@ description: "Send a notification message about a harness todo item's status. Re
 
 ```bash
 npx --yes tsx -e "
-import { TodoStore } from '<pluginRoot>/src/store.js';
+import { TodoStore } from '<pluginRoot>/src/store.ts';
 const store = new TodoStore(process.argv[1]);
 const todo = store.get(process.argv[2]);
 if (!todo) { console.error('待办项不存在'); process.exit(1); }
@@ -38,7 +38,7 @@ console.log(JSON.stringify(todo));
 
 ```bash
 npx --yes tsx -e "
-import { getLastConversationTurn } from '<pluginRoot>/src/services/session-log.js';
+import { getLastConversationTurn } from '<pluginRoot>/src/services/session-log.ts';
 const turn = getLastConversationTurn(process.argv[1]);
 if (!turn) { console.error('无法提取最后一轮对话'); process.exit(1); }
 console.log(JSON.stringify(turn));
@@ -76,7 +76,7 @@ console.log(JSON.stringify(turn));
 
 ```bash
 npx --yes tsx -e "
-import { formatNoticeMessage } from '<pluginRoot>/src/services/notice.js';
+import { formatNoticeMessage } from '<pluginRoot>/src/services/notice.ts';
 console.log(formatNoticeMessage({
   title: process.argv[1],
   status: process.argv[2],

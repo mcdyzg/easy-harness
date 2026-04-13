@@ -34,7 +34,7 @@ fi
 
 # 6. 从 tmux session 名查 todoId
 TODO_ID=$(npx --yes tsx -e "
-  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.js';
+  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.ts';
   const store = new TodoStore(process.argv[1]);
   const todo = store.list().find(t => t.tmuxSessionId === process.argv[2]);
   if (todo) console.log(todo.id);
