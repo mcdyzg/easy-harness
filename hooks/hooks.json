@@ -1,0 +1,15 @@
+{
+  "description": "Harness dashboard session notifications",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-stop.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
