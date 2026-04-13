@@ -4,10 +4,24 @@ Claude Code skill package for terminal-based todo management with tmux-backed Cl
 
 ## Installation
 
-Install this plugin in Claude Code:
+在 Claude Code 中通过 GitHub marketplace 安装：
+
+```
+/plugin marketplace add mcdyzg/easy-harness
+/plugin install easy-harness@easy-harness-marketplace
+```
+
+或者克隆仓库后从本地路径安装：
 
 ```bash
-claude plugins install <path-to-easy-harness>
+git clone https://github.com/mcdyzg/easy-harness.git
+```
+
+然后在 Claude Code 中执行：
+
+```
+/plugin marketplace add <path-to-easy-harness>
+/plugin install easy-harness@easy-harness-local
 ```
 
 ## Hook Setup

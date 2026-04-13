@@ -1,6 +1,6 @@
 {
-  "name": "easy-harness-local",
-  "description": "Local marketplace for easy-harness plugin",
+  "name": "easy-harness-marketplace",
+  "description": "marketplace for easy-harness plugin",
   "owner": {
     "name": "harness",
     "email": "harness@local"
