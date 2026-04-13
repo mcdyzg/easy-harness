@@ -12,20 +12,9 @@ claude plugins install <path-to-harness-dashboard>
 
 ## Hook Setup
 
-Add the following hook to your Claude Code `settings.json` to enable auto-notification on session end:
+This plugin registers a `Stop` hook automatically via `hooks/hooks.json`. No manual `settings.json` configuration is required.
 
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "name": "harness-session-end",
-        "command": "<plugin-dir>/hook/on-session-end.sh $CWD"
-      }
-    ]
-  }
-}
-```
+The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-send-message` skill to generate and deliver a notification.
 
 ## Skills
 
