@@ -1,4 +1,4 @@
-# Harness Dashboard
+# Easy Harness
 
 Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions.
 
@@ -20,6 +20,7 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 
 - `/harness-todo-list` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
+- `/harness-todo-remove` — Remove a todo and kill its tmux session
 - `/harness-session-send-user-message` — Send a message to a running Claude session
 - `/harness-notice-user` — Send a notification about a todo's status
 

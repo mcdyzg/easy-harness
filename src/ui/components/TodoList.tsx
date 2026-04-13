@@ -47,7 +47,7 @@ export function TodoList({ store, onSelect, onCreate }: TodoListProps) {
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text bold>Harness Dashboard</Text>
+        <Text bold>Easy Harness</Text>
       </Box>
 
       {items.length === 0 ? (

@@ -1,4 +1,4 @@
-# Harness Dashboard 设计规格
+# Easy Harness 设计规格
 
 ## 概述
 
@@ -50,7 +50,7 @@ interface TodoItem {
 6. 将 tmux 对话 ID、remote-control URL、Claude session ID、Claude session name 记录回待办项对应字段
 7. 待办项状态更新为 `running`
 
-### 2. `/harness-dashboard`
+### 2. `/easy-harness`
 
 **触发方式：** 在任意 Claude Code 对话中调用。
 
@@ -136,7 +136,7 @@ interface NoticeMessage {
 ## 目录结构（skill 包）
 
 ```
-harness-dashboard/
+easy-harness/
 ├── package.json
 ├── tsconfig.json
 ├── src/

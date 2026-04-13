@@ -1,4 +1,4 @@
-# Harness Dashboard Implementation Plan
+# Easy Harness Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -975,7 +975,7 @@ export function TodoList({ store, onSelect, onCreate }: TodoListProps) {
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text bold>📋 Harness Dashboard</Text>
+        <Text bold>📋 Easy Harness</Text>
       </Box>
 
       {items.length === 0 ? (
@@ -1121,10 +1121,10 @@ git commit -m "feat: add Ink dashboard UI with TodoList, TodoForm, ExecutePrompt
 ```markdown
 ---
 name: easy-harness
-description: "Open the Harness Dashboard terminal UI to manage todo items. Use when the user wants to view, create, edit, delete, or execute todo items in the harness system. Triggers on: /easy-harness, 'open dashboard', 'show todos', 'harness list'."
+description: "Open the Easy Harness terminal UI to manage todo items. Use when the user wants to view, create, edit, delete, or execute todo items in the harness system. Triggers on: /easy-harness, 'open dashboard', 'show todos', 'harness list'."
 ---
 
-# Harness Dashboard
+# Easy Harness
 
 打开基于 Ink 的终端待办项管理界面。
 
@@ -1369,7 +1369,7 @@ git commit -m "feat: add SKILL.md files for all 4 skills"
 
 ```bash
 #!/bin/bash
-# Harness Dashboard — 会话结束 hook
+# Easy Harness — 会话结束 hook
 # 检测是否为 harness 管理的会话，若是则触发通知
 
 # 获取当前 tmux 会话名称（如果在 tmux 中）
@@ -1425,7 +1425,7 @@ git commit -m "feat: add session-end hook script"
 - [ ] **Step 1: Write README with installation and hook setup instructions**
 
 ```markdown
-# Harness Dashboard
+# Easy Harness
 
 Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions.
 

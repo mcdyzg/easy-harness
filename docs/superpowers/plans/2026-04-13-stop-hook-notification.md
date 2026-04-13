@@ -93,7 +93,7 @@ mkdir -p hooks
 
 ```json
 {
-  "description": "Harness dashboard session notifications",
+  "description": "Easy Harness session notifications",
   "hooks": {
     "Stop": [
       {

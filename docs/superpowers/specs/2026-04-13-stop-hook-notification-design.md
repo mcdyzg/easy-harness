@@ -67,7 +67,7 @@
 
 ```json
 {
-  "description": "Harness dashboard session notifications",
+  "description": "Easy Harness session notifications",
   "hooks": {
     "Stop": [
       {
