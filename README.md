@@ -46,6 +46,7 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 
 - `/harness-todo-list` — Open the terminal todo management UI
 - `/harness-todo-create` — Create a new todo from a description
+- `/harness-todo-finish` — Mark a todo as done/failed, close its tmux session, keep the record
 - `/harness-todo-remove` — Remove a todo and kill its tmux session
 - `/harness-session-send-user-message` — Send a message to a running Claude session
 - `/harness-notice-user` — Send a notification about a todo's status
@@ -85,6 +86,30 @@ Easy Harness 的核心 skills 在关键流程节点都预留了 **`harness-custo
 **典型用法**：调用远端 API 登记任务、投递"新任务已创建"卡片到 IM、把 `remoteControlUrl` 同步到团队看板等。
 
 **注意**：不要修改或删除已写入 `.harness/todos.json` 的核心字段，否则会破坏默认流程的契约。
+
+### `harness-custom-todo-finish` — 任务完成后的扩展钩子
+
+`harness-todo-finish` 默认会关闭 tmux 会话并把记录状态改为 `done` / `failed`。如果希望在完成后追加自定义动作 —— 例如 **在远端任务系统里关单 / 把团队看板卡片移到 Done 列 / 发送"任务已完成"通知 / 归档产出物** 等，可以提供该钩子。
+
+**触发时机**：`harness-todo-finish` 完成「关闭 tmux 会话 → 更新记录状态」之后。
+
+**传入参数**（完成后的完整字段，`status` 已是最终态）：
+
+| 字段 | 说明 |
+| --- | --- |
+| `cwd` | 待办项所在工作目录 |
+| `id` | 待办项 ID |
+| `title` | 待办项标题 |
+| `description` | 用户原始描述 |
+| `status` | 最终状态，`done` 或 `failed` |
+| `tmuxSessionId` | 已关闭的 tmux 会话 ID（保留作为历史） |
+| `remoteControlUrl` | 远程控制链接（保留作为历史） |
+| `claudeSessionId` | Claude Code 的 session ID |
+| `claudeSessionName` | `[HARNESS_SESSION]<title>` |
+
+**典型用法**：调用远端 API 关单、把卡片移到对应列、投递"任务已完成/失败"IM 通知、把产出物上传到制品库等。
+
+**注意**：不要回滚或修改已写入 `.harness/todos.json` 的核心字段，否则会破坏默认流程的契约。
 
 ### `harness-custom-notice-user` — 通知投递的扩展钩子
 
