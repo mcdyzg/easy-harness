@@ -86,13 +86,51 @@ try {
 
 1. `todo.status !== 'running'` → 输出 `该会话未在运行（当前状态：<status>）` 并终止
 2. `todo.tmuxSessionId` 为空 → 输出 `tmux 会话已关闭` 并终止
-3. 调用：
+3. 检测 tmux 会话是否实际存在（电脑重启等原因可能导致 tmux 会话丢失但记录未更新）：
+
+```bash
+tmux has-session -t "<todo.tmuxSessionId>" 2>/dev/null
+```
+
+- **退出码 0** → 会话存在，继续第 4 步
+- **非零退出码** → 会话已丢失，进入第 3a 步（恢复流程）
+
+#### 3a. 会话恢复
+
+向用户提示并确认：
+
+```
+⚠️ tmux 会话 <tmuxSessionId> 已不存在（可能因电脑重启等原因丢失）。
+是否重新创建会话并发送消息？(y/n)
+```
+
+- **用户拒绝** → 将 `todo.status` 更新为 `failed`，输出 `已将待办项状态标记为 failed` 并终止
+
+  ```bash
+  npx tsx -e "
+  import { TodoStore } from '<plugin-dir>/src/store.js';
+  const store = new TodoStore(process.argv[1]);
+  store.update(process.argv[2], { status: 'failed' });
+  " "<cwd>" "<todo.id>"
+  ```
+
+- **用户确认** → 重新创建 tmux 会话：
+
+  ```bash
+  SESSION_NAME="<todo.claudeSessionName>"
+  TMUX_NAME="<todo.tmuxSessionId>"
+  tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '当前任务信息是：<todo.description>；当前待办项的id是<todo.id>'"
+  ```
+
+  等待 Claude Code 启动完成后（约 2-3 秒），继续第 4 步发送消息。
+
+### 4. 执行发送
 
 ```bash
 tmux send-keys -t "<todo.tmuxSessionId>" '<用户输入的文本>' Enter
 ```
 
-如果 tmux 命令本身报错（会话已不存在等），把 tmux 的 stderr 转给用户。
+如果 tmux 命令本身报错，把 tmux 的 stderr 转给用户。
 
 ## 错误文案对照
 
@@ -102,4 +140,6 @@ tmux send-keys -t "<todo.tmuxSessionId>" '<用户输入的文本>' Enter
 | 三路查找均未命中 | `LookupError` `NOT_FOUND` 的 message |
 | 确认阶段无法定位 | `LookupError` `NOT_FOUND` 的 message |
 | 状态不是 running | `该会话未在运行（当前状态：<status>）` |
-| tmux 会话不存在 | `tmux 会话 <tmuxSessionId> 已关闭` 或 tmux stderr |
+| tmux 会话记录为空 | `tmux 会话已关闭` |
+| tmux 会话已丢失（重启等） | 提示用户是否恢复；拒绝则标记 failed |
+| 发送时 tmux 报错 | tmux stderr |
