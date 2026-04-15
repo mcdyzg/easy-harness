@@ -5,7 +5,9 @@ description: "Generate a customized ralph-loop prompt file with user-specified e
 
 # Harness Todo Ralph Loop
 
-基于 `.claude/prompts/harness-todo-loop.md` 模板，把用户提供的**每轮执行策略**注入到模板末尾，然后在 `.harness/` 下生成一份独立的 ralph-loop prompt，再调用 `ralph-loop` 插件的 setup 脚本启动循环。第一轮由本 skill 触发 Claude 按新 prompt 开始执行；第二轮起由 ralph-loop 的 stop hook 在每次 end-of-turn 重新注入同一 prompt 让 Claude 继续，直到满足 `<promise>` 或达到 `--max-iterations`。
+把下方【内联 PROMPT 模板】与用户提供的**每轮执行策略**拼接，在 `.harness/` 下生成一份独立的 ralph-loop prompt，再调用 `ralph-loop` 插件的 setup 脚本启动循环。第一轮由本 skill 触发 Claude 按新 prompt 开始执行；第二轮起由 ralph-loop 的 stop hook 在每次 end-of-turn 重新注入同一 prompt 让 Claude 继续，直到满足 `<promise>` 或达到 `--max-iterations`。
+
+> 设计要点：模板内容**内联**在本 SKILL.md 的第 5 步里，不依赖仓库中任何外部文件。skill 被安装到任何项目后都能独立工作。
 
 ## 输入
 
@@ -20,11 +22,12 @@ description: "Generate a customized ralph-loop prompt file with user-specified e
 
 ### 1. 硬预检（任一不满足即停下报告，不静默修复）
 
-- 模板文件存在：`.claude/prompts/harness-todo-loop.md`
 - `.harness/todos.json` 存在，**且至少有一条 `status == "running"`**
   - running 数 = 0 → 拒绝启动，告知"当前无 running 待办，启动循环会空转直到 max-iterations"；不硬往下走
 - `.claude/ralph-loop.local.md` 不存在
   - 已存在 → 询问用户"当前已有活跃的 ralph loop（iteration: X），继续会覆盖，是否确认？"；**不默认覆盖**
+
+> 注：模板正文已内联在本 skill 第 5 步，**不再需要**检查 `.claude/prompts/harness-todo-loop.md` 是否存在。
 
 ```bash
 # running 计数
@@ -72,26 +75,122 @@ fi
 
 得到确认再进入第 5 步。
 
-### 5. 抽出模板正文并注入用户执行策略
+### 5. 用 Write 工具生成 prompt 文件（模板内联，不依赖外部文件）
+
+先用 Bash 确定时间戳与目录：
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
-OUT_FILE=".harness/ralph-loop-${TS}.md"
 mkdir -p .harness
-
-# 抽出模板里 PROMPT START / END 之间的正文
-sed -n '/<!-- --- PROMPT START --- -->/,/<!-- --- PROMPT END --- -->/p' \
-  .claude/prompts/harness-todo-loop.md > "$OUT_FILE"
-
-# 在末尾追加用户自定义执行策略（原文保留换行与原貌）
-cat >> "$OUT_FILE" <<'EOF'
-
-### 用户自定义执行策略
-EOF
-printf '%s\n' "<用户原文>" >> "$OUT_FILE"
+echo ".harness/ralph-loop-${TS}.md"
 ```
 
-写完后**读一遍**生成文件校验：必须能看到 `### 用户自定义执行策略` 小节且非空，否则视为预检失败。
+然后**直接用 Write 工具**把下方【PROMPT 模板正文】原样写入 `.harness/ralph-loop-<TS>.md`，并在末尾追加 `### 用户自定义执行策略` 小节 + 用户原文。
+
+**拼接规则**：
+
+1. `part-A`：【PROMPT 模板正文】的全文，原样复制（Markdown 标题/代码块都保留，不要加省略号，不要改动 `<plugin-dir>` 占位符——它由执行期的 Claude 自行解析成实际插件目录）
+2. 一个空行
+3. `part-B`：
+
+   ```
+   ### 用户自定义执行策略
+   <用户原文，保留换行与原貌>
+   ```
+
+写完后用 Read 工具重读生成文件校验：
+- 文件以 `### 用户自定义执行策略` 小节结尾且内容非空
+- 模板正文里的 `# 任务：批处理 harness 中所有 running 状态的待办项` 标题存在
+- 否则视为预检失败，报告后中止；**不要**尝试"修一下再继续"
+
+---
+
+#### 【PROMPT 模板正文】（写入 part-A 的唯一权威来源）
+
+> 下面以 `===BEGIN PROMPT TEMPLATE===` 和 `===END PROMPT TEMPLATE===` 之间的内容为准，两行标记本身**不**写入输出文件。外层用 4 反引号围栏以容纳模板内部的 3 反引号 `bash` 代码块。
+
+````
+===BEGIN PROMPT TEMPLATE===
+# 任务：批处理 harness 中所有 running 状态的待办项
+
+## 目标
+
+把 harness 系统中所有 `running` 状态的待办项逐个执行完毕，执行成功后把状态改为 `pending`，直至列表中不再存在 `running` 项。
+
+## 每轮迭代标准流程
+
+**步骤 1 — 查询当前状态**
+- 调用 `harness-todo-list` skill 读取 `.harness/todos.json`
+- 筛出列表中所有 `status == "running"` 的待办项
+- 如果文件不存在或 `running` 列表为空 → 跳到「终止判定」
+
+**步骤 2 — 选取一个待办项**
+- 从 `running` 列表中取**第一条**（按 `store.list()` 返回顺序）
+- 记下其 `id`，后续所有定位都用 `id`（不用序号，序号会变）
+- 同时读取其 `title` / `description` 作为任务上下文
+
+**步骤 3 — 执行待办项（按执行策略分派）**
+
+优先级规则（严格按此顺序判断）：
+
+1. **检查本 prompt 末尾是否存在 `### 用户自定义执行策略` 小节，且该小节下内容非空**
+   - 若存在 → **严格按用户自定义执行策略执行**，该段内容即是本步骤的全部执行说明
+   - 用户策略里写了什么就照做什么（例如"用 bash 跑 npm test"、"调用某个 skill 处理"、"调用某个 MCP 工具"等），**不要**额外叠加默认策略
+2. **若不存在或为空** → 采用默认策略：
+   - 把 `title` + `description` 作为任务描述，**以你（当前会话）自身身份直接执行**
+   - 按你对该待办项的理解，使用通用工具（Read / Edit / Write / Bash / Grep / Glob / Task 等）完成它；**不要**默认拉起任何特定 skill
+   - 需要判断 / 规划 / 调研 / 实现 / 验证时，自主决定边界与粒度；只要最终结果满足待办项描述即算成功
+
+无论哪种策略，都要等执行明确结束后再进入步骤 4，并判定执行是**成功**还是**失败**。
+
+**步骤 4 — 更新状态**
+- 执行**成功** → 通过 `.harness/todos.json` 把该 `id` 对应条目的 `status` 从 `running` 改为 `pending`：
+
+  ```bash
+  npx tsx -e "
+  import { TodoStore } from '<plugin-dir>/src/store.ts';
+  const store = new TodoStore(process.argv[1]);
+  store.update(process.argv[2], { status: 'pending' });
+  " "<cwd>" "<todo-id>"
+  ```
+
+  - 其中 `<plugin-dir>` 为 easy-harness 插件的实际安装目录（存在 `src/store.ts` 的目录，例如 `~/.claude/plugins/cache/easy-harness-marketplace/easy-harness/<version>`）
+  - `<cwd>` 为当前工作目录
+  - 只动 `status` 字段，保留 `tmuxSessionId` / `remoteControlUrl` / `claudeSessionId` 等原值
+- 执行**失败** → **不要**改为 `pending`，保持 `running`（或按错误严重程度手动改为 `failed`），并在本轮输出中说明失败原因，交给下一轮重试或人工介入
+
+**步骤 5 — 终止判定**
+- 再次调用 `harness-todo-list`（**不要**复用步骤 1 的快照，可能已被外部修改）
+- 若**已无 `status == "running"` 的待办项** → 目标达成，输出：
+
+  ```
+  <promise>待办项执行成功</promise>
+  ```
+
+- 否则 → 本轮结束，等待下一次 Ralph 迭代自然拉起
+
+## 严格约束
+
+1. **单轮只处理一条**：每轮只完整处理一个 `running` 待办项，避免一次吞太多状态变动
+2. **每轮重读**：每轮都从 `.harness/todos.json` 重新读，禁止缓存上一轮的内存列表
+3. **id 优先**：所有定位使用 `id`，禁止使用会变动的序号（#）
+4. **状态单调**：`running → pending` 只在执行成功后发生；失败时绝不改为 `pending`，否则下一轮会误把它视为已处理
+5. **终止真实性**：只有在**再次查询列表已无 running 项**时才允许输出 `<promise>`；不得为了逃离循环而撒谎
+6. **空列表即完成**：若从一开始就没有 `running` 项（或 `.harness` 不存在），这是合法的终止态，可直接输出 `<promise>待办项执行成功</promise>`
+7. **执行策略一致性**：同一次 Ralph Loop 的所有迭代必须使用同一种执行策略（要么一直默认，要么一直用户策略），不得在不同轮次切换
+
+## 异常处理
+
+| 场景 | 处理方式 |
+|------|---------|
+| 执行策略（默认或自定义）报错中断 | 保持 `running` 或改 `failed`，在本轮输出中记录错误，不输出 `<promise>`，本轮结束 |
+| `.harness/todos.json` 损坏 / 格式异常 | **不要**尝试修复（可能吃掉未保存数据），报告并结束本轮 |
+| 待办项缺少 `title` / `description` | 把能拿到的字段（至少 `id`）交给执行策略，让其自行询问或查阅上下文 |
+| 同一待办项连续多轮失败 | 在本轮日志里明确标注「第 N 轮仍失败」，依赖 `--max-iterations` 兜底终止，避免死循环 |
+| 状态写回失败（磁盘 / 权限） | 视同本轮执行失败：不输出 `<promise>`，报错并等待下一轮 |
+| 用户自定义执行策略本身不合法 / 无法执行 | 视同失败，保持 `running`，输出错误原因；**不要**静默降级到默认策略 |
+===END PROMPT TEMPLATE===
+````
 
 ### 6. 输出启动摘要（给用户看的反馈）
 
@@ -179,7 +278,7 @@ ralph loop 是长循环，必须正面处理超限场景：
 
 | 场景 | 文案 |
 |------|------|
-| 模板文件缺失 | `模板文件不存在：.claude/prompts/harness-todo-loop.md，无法生成 prompt` |
+| 生成文件校验失败 | `生成的 .harness/ralph-loop-<TS>.md 缺少 \`### 用户自定义执行策略\` 小节或正文头，判定为写入异常——已中止，请重试` |
 | running 数 = 0 | `当前无 running 待办项，启动循环会空转直到 max-iterations——已取消` |
 | 已有活跃 loop | `检测到已有活跃 ralph loop（iteration: X / max: Y），继续会覆盖它的状态文件，确认吗？` |
 | 插件未安装 | 见「降级分支」 |
