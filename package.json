@@ -10,6 +10,7 @@
     "version:bump": "npm version patch --no-git-tag-version && node scripts/sync-version.mjs"
   },
   "dependencies": {
+    "croner": "^8.1.2",
     "nanoid": "^5.1.0"
   },
   "devDependencies": {
