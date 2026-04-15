@@ -50,6 +50,7 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 - `/harness-todo-remove` — Remove a todo and kill its tmux session
 - `/harness-session-send-user-message` — Send a message to a running Claude session
 - `/harness-notice-user` — Send a notification about a todo's status
+- `/harness-todo-polling` — Start a background cron poller that serially wakes up running todos via tmux send-keys
 
 ## Customization
 
