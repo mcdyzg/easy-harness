@@ -8,6 +8,7 @@
     "./skills/harness-todo-remove",
     "./skills/harness-todo-finish",
     "./skills/harness-session-send-user-message",
-    "./skills/harness-notice-user"
+    "./skills/harness-notice-user",
+    "./skills/harness-todo-ralph-loop"
   ]
 }

@@ -25,8 +25,8 @@ description: "Create a new harness todo item from a description. Analyzes the de
 
 ```bash
 npx tsx -e "
-import { generateId } from '<plugin-dir>/src/utils/id.js';
-import { TodoStore } from '<plugin-dir>/src/store.js';
+import { generateId } from '<plugin-dir>/src/utils/id.ts';
+import { TodoStore } from '<plugin-dir>/src/store.ts';
 const store = new TodoStore(process.argv[1]);
 const id = generateId();
 store.add({
@@ -64,7 +64,7 @@ tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control 
 
 ```bash
 npx tsx -e "
-import { TodoStore } from '<plugin-dir>/src/store.js';
+import { TodoStore } from '<plugin-dir>/src/store.ts';
 const store = new TodoStore(process.argv[1]);
 store.update(process.argv[2], {
   status: 'running',

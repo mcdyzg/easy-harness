@@ -1,0 +1,22 @@
+[
+  {
+    "id": "R0RPic7gotZ-",
+    "title": "计算 1+1 的结果",
+    "description": "1+1=？",
+    "status": "running",
+    "tmuxSessionId": "harness-R0RPic7gotZ-",
+    "remoteControlUrl": "https://claude.ai/code/session_01ExfyQTiCAo1zE6q2WnxEEv",
+    "claudeSessionId": "40fe78d4-552b-4d67-836e-ec6ebfe39ebf",
+    "claudeSessionName": "[HARNESS_SESSION]计算 1+1 的结果"
+  },
+  {
+    "id": "ujrVGOq8QHXZ",
+    "title": "计算 1+2 的结果",
+    "description": "1+2=？",
+    "status": "pending",
+    "tmuxSessionId": "",
+    "remoteControlUrl": "",
+    "claudeSessionId": "",
+    "claudeSessionName": ""
+  }
+]
