@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "version:bump": "npm version patch --no-git-tag-version && node scripts/sync-version.mjs"
   },
   "dependencies": {
     "nanoid": "^5.1.0"
