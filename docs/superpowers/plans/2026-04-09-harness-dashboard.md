@@ -32,7 +32,7 @@ cd easy-harness
 ```json
 {
   "name": "easy-harness",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Claude Code skill package for terminal-based todo management with tmux-backed Claude sessions",
   "type": "module",
   "scripts": {
@@ -97,7 +97,7 @@ export default defineConfig({
 {
   "name": "easy-harness",
   "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "skills": [
     "./skills/easy-harness",
     "./skills/harness-todo-create",
