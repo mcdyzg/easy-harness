@@ -1,4 +1,8 @@
+import { execSync } from "node:child_process";
+import { Cron } from "croner";
 import type { TodoItem } from "../types.js";
+import { TodoStore } from "../store.js";
+import { buildSendKeysCommand } from "./tmux.js";
 
 /** polling 进程内的运行时状态。纯数据，`tick` 不会在原对象上写入 */
 export interface PollingState {
@@ -112,4 +116,95 @@ export function tick(
     seen.add(nextId);
     return { newState: { queue, focusIndex, seen }, actions };
   }
+}
+
+export interface RunPollingOptions {
+  cwd: string;
+  message: string;
+  intervalMinutes: number;
+}
+
+/**
+ * 判断 tmux 会话是否还在。`tmux has-session` 退出码 0 = 存在。
+ * 任何异常（tmux 不在 PATH、会话名字为空、stderr 非空）都视为"不存在"。
+ */
+function defaultSessionExists(sessionId: string): boolean {
+  if (!sessionId) return false;
+  try {
+    execSync(`tmux has-session -t ${JSON.stringify(sessionId)} 2>/dev/null`, {
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function log(level: "info" | "warn" | "error", msg: string): void {
+  const line = `[${new Date().toISOString()}] ${level} ${msg}`;
+  if (level === "error") console.error(line);
+  else console.log(line);
+}
+
+/**
+ * 启动 polling 循环。阻塞：本函数调用 Cron.schedule 并注册 SIGINT/SIGTERM 处理器，
+ * 真正退出由 tick 返回 terminate 时触发 `process.exit(0)`。
+ */
+export function runPolling(opts: RunPollingOptions): void {
+  const { cwd, message, intervalMinutes } = opts;
+  const store = new TodoStore(cwd);
+
+  let state = initialState(store.list());
+  log("info", `polling started: cwd=${cwd} interval=${intervalMinutes}min queue=[${state.queue.join(",")}]`);
+
+  // 单次执行：读 todos → tick → 执行 actions
+  const execute = (): void => {
+    const todos = store.list();
+    const { newState, actions } = tick(state, todos, defaultSessionExists);
+    state = newState;
+
+    for (const action of actions) {
+      switch (action.type) {
+        case "wait":
+          // 本拍无事，不打日志避免噪音
+          break;
+
+        case "skip":
+          log("warn", `skip ${action.id}: ${action.reason}`);
+          break;
+
+        case "trigger": {
+          const cmd = buildSendKeysCommand(action.tmuxSessionId, message);
+          try {
+            execSync(cmd);
+            log("info", `triggered ${action.id} (${action.title})`);
+          } catch (e) {
+            log("error", `send-keys failed for ${action.id}: ${(e as Error).message}`);
+          }
+          break;
+        }
+
+        case "terminate":
+          log("info", `terminate: ${action.reason}`);
+          cron.stop();
+          process.exit(0);
+      }
+    }
+  };
+
+  // tick0：立刻执行一次
+  execute();
+
+  // 后续：cron 每 N 分钟触发
+  const cronExpr = `*/${intervalMinutes} * * * *`;
+  const cron = new Cron(cronExpr, execute);
+
+  // 信号处理：优雅收尾
+  const shutdown = (sig: string) => {
+    log("info", `received ${sig}, stopping`);
+    cron.stop();
+    process.exit(0);
+  };
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
