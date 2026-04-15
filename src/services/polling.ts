@@ -157,6 +157,9 @@ export function runPolling(opts: RunPollingOptions): void {
   let state = initialState(store.list());
   log("info", `polling started: cwd=${cwd} interval=${intervalMinutes}min queue=[${state.queue.join(",")}]`);
 
+  // cron 提前声明：execute() 在 tick0 路径可能早于 new Cron 就要引用它
+  let cron: Cron | undefined;
+
   // 单次执行：读 todos → tick → 执行 actions
   const execute = (): void => {
     const todos = store.list();
@@ -186,7 +189,7 @@ export function runPolling(opts: RunPollingOptions): void {
 
         case "terminate":
           log("info", `terminate: ${action.reason}`);
-          cron.stop();
+          cron?.stop();
           process.exit(0);
       }
     }
@@ -197,12 +200,12 @@ export function runPolling(opts: RunPollingOptions): void {
 
   // 后续：cron 每 N 分钟触发
   const cronExpr = `*/${intervalMinutes} * * * *`;
-  const cron = new Cron(cronExpr, execute);
+  cron = new Cron(cronExpr, execute);
 
   // 信号处理：优雅收尾
   const shutdown = (sig: string) => {
     log("info", `received ${sig}, stopping`);
-    cron.stop();
+    cron?.stop();
     process.exit(0);
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
