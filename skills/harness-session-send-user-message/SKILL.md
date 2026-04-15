@@ -82,9 +82,18 @@ try {
 
 ### 3. 发送消息
 
-拿到 `todo` 后，按以下顺序校验并发送：
+拿到 `todo` 后，按以下顺序处理：
 
-1. `todo.status !== 'running'` → 输出 `该会话未在运行（当前状态：<status>）` 并终止
+1. **无条件将 `todo.status` 更新为 `running`**（无论当前状态是 pending/done/failed 还是已经是 running，都覆盖为 running，表示本次开始执行）：
+
+   ```bash
+   npx tsx -e "
+   import { TodoStore } from '<plugin-dir>/src/store.ts';
+   const store = new TodoStore(process.argv[1]);
+   store.update(process.argv[2], { status: 'running' });
+   " "<cwd>" "<todo.id>"
+   ```
+
 2. `todo.tmuxSessionId` 为空 → 输出 `tmux 会话已关闭` 并终止
 3. 检测 tmux 会话是否实际存在（电脑重启等原因可能导致 tmux 会话丢失但记录未更新）：
 
@@ -108,7 +117,7 @@ tmux has-session -t "<todo.tmuxSessionId>" 2>/dev/null
 
   ```bash
   npx tsx -e "
-  import { TodoStore } from '<plugin-dir>/src/store.js';
+  import { TodoStore } from '<plugin-dir>/src/store.ts';
   const store = new TodoStore(process.argv[1]);
   store.update(process.argv[2], { status: 'failed' });
   " "<cwd>" "<todo.id>"
@@ -139,7 +148,6 @@ tmux send-keys -t "<todo.tmuxSessionId>" '<用户输入的文本>' Enter
 | 序号越界 / 候选序号越界 | `LookupError` `OUT_OF_RANGE` 的 message |
 | 三路查找均未命中 | `LookupError` `NOT_FOUND` 的 message |
 | 确认阶段无法定位 | `LookupError` `NOT_FOUND` 的 message |
-| 状态不是 running | `该会话未在运行（当前状态：<status>）` |
 | tmux 会话记录为空 | `tmux 会话已关闭` |
 | tmux 会话已丢失（重启等） | 提示用户是否恢复；拒绝则标记 failed |
 | 发送时 tmux 报错 | tmux stderr |

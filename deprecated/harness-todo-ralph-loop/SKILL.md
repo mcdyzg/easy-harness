@@ -5,7 +5,7 @@ description: "Generate a customized ralph-loop prompt file with user-specified e
 
 # Harness Todo Ralph Loop
 
-把下方【内联 PROMPT 模板】与用户提供的**每轮执行策略**拼接，在 `.harness/` 下生成一份独立的 ralph-loop prompt，再调用 `ralph-loop` 插件的 setup 脚本启动循环。第一轮由本 skill 触发 Claude 按新 prompt 开始执行；第二轮起由 ralph-loop 的 stop hook 在每次 end-of-turn 重新注入同一 prompt 让 Claude 继续，直到满足 `<promise>` 或达到 `--max-iterations`。
+把下方【内联 PROMPT 模板】与用户提供的**用户命令**（每轮下发给 running todo 关联 Claude 会话的消息原文）拼接，在 `.harness/` 下生成一份独立的 ralph-loop prompt，再调用 `ralph-loop` 插件的 setup 脚本启动循环。每一轮 ralph loop 会话会调用 `harness-session-send-user-message` skill 把这段用户命令发给当前 running todo 关联的 Claude 会话，由该会话自行完成业务动作。第一轮由本 skill 触发 Claude 按新 prompt 开始执行；第二轮起由 ralph-loop 的 stop hook 在每次 end-of-turn 重新注入同一 prompt 让 Claude 继续，直到满足 `<promise>` 或达到 `--max-iterations`。
 
 > 设计要点：模板内容**内联**在本 SKILL.md 的第 5 步里，不依赖仓库中任何外部文件。skill 被安装到任何项目后都能独立工作。
 
@@ -13,10 +13,10 @@ description: "Generate a customized ralph-loop prompt file with user-specified e
 
 用户消息中应当包含：
 
-- **执行策略**（必填，可多行自然语言）：每一轮对单条 `running` todo 的具体执行办法。例如"用 bash 跑 `npm test`"、"调用 `code-reviewer` skill 处理"、"调用 MCP 工具 `foo` 处理"等
+- **用户命令**（必填，可多行自然语言）：每一轮调度到单条 `running` todo 时，要**通过 `harness-session-send-user-message` skill 发给其关联 Claude 会话**的消息原文。这是从 ralph loop 会话发给 todo 关联会话的"用户指令"，由该会话自行解读并执行——例如"继续完成当前任务"、"跑一下 npm test 并修复失败用例"、"按之前的方案补完剩余代码"等
 - **max-iterations**（选填）：最大迭代次数。支持 `--max-iterations <n>`、`max-iterations=<n>`、"迭代 N 次"、"N 轮" 等写法
 
-**执行策略缺失时**：**不要**自作主张走默认。停下来向用户追问"这轮循环里每条 todo 具体怎么执行？"再继续。
+**用户命令缺失时**：**不要**自作主张生成默认文案。停下来向用户追问"要发给每条 running todo 关联会话的用户命令是什么？"再继续。
 
 ## 处理流程
 
@@ -85,7 +85,7 @@ mkdir -p .harness
 echo ".harness/ralph-loop-${TS}.md"
 ```
 
-然后**直接用 Write 工具**把下方【PROMPT 模板正文】原样写入 `.harness/ralph-loop-<TS>.md`，并在末尾追加 `### 用户自定义执行策略` 小节 + 用户原文。
+然后**直接用 Write 工具**把下方【PROMPT 模板正文】原样写入 `.harness/ralph-loop-<TS>.md`，并在末尾追加 `### 用户命令` 小节 + 用户原文。
 
 **拼接规则**：
 
@@ -94,12 +94,12 @@ echo ".harness/ralph-loop-${TS}.md"
 3. `part-B`：
 
    ```
-   ### 用户自定义执行策略
+   ### 用户命令
    <用户原文，保留换行与原貌>
    ```
 
 写完后用 Read 工具重读生成文件校验：
-- 文件以 `### 用户自定义执行策略` 小节结尾且内容非空
+- 文件以 `### 用户命令` 小节结尾且内容非空
 - 模板正文里的 `# 任务：批处理 harness 中所有 running 状态的待办项` 标题存在
 - 否则视为预检失败，报告后中止；**不要**尝试"修一下再继续"
 
@@ -129,22 +129,29 @@ echo ".harness/ralph-loop-${TS}.md"
 - 记下其 `id`，后续所有定位都用 `id`（不用序号，序号会变）
 - 同时读取其 `title` / `description` 作为任务上下文
 
-**步骤 3 — 执行待办项（按执行策略分派）**
+**步骤 3 — 执行待办项（通过 `harness-session-send-user-message` skill 下发用户命令）**
 
-优先级规则（严格按此顺序判断）：
+本步骤的"执行"定义为：把**用户命令**发送到该待办项关联的 Claude Code 会话，由该会话自行解读并完成具体业务动作。ralph loop 当前会话**不直接在本会话内执行业务逻辑**（避免污染上下文，并让每条 todo 的产出留在自己会话的日志中）。
 
-1. **检查本 prompt 末尾是否存在 `### 用户自定义执行策略` 小节，且该小节下内容非空**
-   - 若存在 → **严格按用户自定义执行策略执行**，该段内容即是本步骤的全部执行说明
-   - 用户策略里写了什么就照做什么（例如"用 bash 跑 npm test"、"调用某个 skill 处理"、"调用某个 MCP 工具"等），**不要**额外叠加默认策略
-2. **若不存在或为空** → 采用默认策略：
-   - 把 `title` + `description` 作为任务描述，**以你（当前会话）自身身份直接执行**
-   - 按你对该待办项的理解，使用通用工具（Read / Edit / Write / Bash / Grep / Glob / Task 等）完成它；**不要**默认拉起任何特定 skill
-   - 需要判断 / 规划 / 调研 / 实现 / 验证时，自主决定边界与粒度；只要最终结果满足待办项描述即算成功
-
-无论哪种策略，都要等执行明确结束后再进入步骤 4，并判定执行是**成功**还是**失败**。
+1. **读取用户命令**
+   - 定位本 prompt 末尾的 `### 用户命令` 小节
+   - 若该小节不存在或内容为空 → 视为执行失败（见步骤 4 的失败分支），在本轮输出中明确报错："当前 ralph loop 缺失用户命令，无法下发"，跳到步骤 5
+2. **调用 `harness-session-send-user-message` skill**
+   - **待办项标识**：使用当前待办项的完整 `id`（不要使用序号、title，避免歧义）
+   - **消息内容**：上一步读到的用户命令**原文**，保留换行与原貌；**不要**在消息里叠加额外说明、上下文、或 ralph loop 自身的元信息
+   - 必要时可参考 `harness-session-send-user-message` 的入参要求做最小包装，但不得篡改用户原文语义
+3. **判定发送结果**
+   - skill 返回"消息已通过 tmux send-keys 送达" → 视为**执行成功**（注意：业务完成与否由关联会话自行处理，ralph loop 只对"消息送达"负责）
+   - skill 报错（目标 todo 非 running / `tmuxSessionId` 为空 / tmux 会话丢失且用户拒绝恢复 / tmux 命令报错 / 其它异常）→ 视为**执行失败**，把 skill 返回的错误原文写入本轮输出
+4. **不要等待业务完成**
+   - 发送成功后立即进入步骤 4，**不要**在本轮 sleep / 轮询 `todos.json` 等待关联会话产出结果
+   - 业务侧的成功/失败由关联会话自己负责，它完成后会自行改状态或由 `harness-todo-finish` 等 skill 介入
 
 **步骤 4 — 更新状态**
-- 执行**成功** → 通过 `.harness/todos.json` 把该 `id` 对应条目的 `status` 从 `running` 改为 `pending`：
+
+这里的"成功/失败"仅指**消息是否已通过 `harness-session-send-user-message` skill 成功送达**，不代表业务执行结果。
+
+- 消息**送达成功** → 通过 `.harness/todos.json` 把该 `id` 对应条目的 `status` 从 `running` 改为 `pending`：
 
   ```bash
   npx tsx -e "
@@ -157,7 +164,8 @@ echo ".harness/ralph-loop-${TS}.md"
   - 其中 `<plugin-dir>` 为 easy-harness 插件的实际安装目录（存在 `src/store.ts` 的目录，例如 `~/.claude/plugins/cache/easy-harness-marketplace/easy-harness/<version>`）
   - `<cwd>` 为当前工作目录
   - 只动 `status` 字段，保留 `tmuxSessionId` / `remoteControlUrl` / `claudeSessionId` 等原值
-- 执行**失败** → **不要**改为 `pending`，保持 `running`（或按错误严重程度手动改为 `failed`），并在本轮输出中说明失败原因，交给下一轮重试或人工介入
+  - 这里把 `running → pending` 的语义理解为"已从 ralph loop 分派给关联会话"；后续业务侧的完成/失败由关联会话自行改 `done`/`failed`（或人工介入）
+- 消息**送达失败** → **不要**改为 `pending`，保持 `running`（若 skill 已将其标记为 `failed` 则保留其 `failed`），并在本轮输出中说明失败原因，交给下一轮重试或人工介入
 
 **步骤 5 — 终止判定**
 - 再次调用 `harness-todo-list`（**不要**复用步骤 1 的快照，可能已被外部修改）
@@ -174,21 +182,23 @@ echo ".harness/ralph-loop-${TS}.md"
 1. **单轮只处理一条**：每轮只完整处理一个 `running` 待办项，避免一次吞太多状态变动
 2. **每轮重读**：每轮都从 `.harness/todos.json` 重新读，禁止缓存上一轮的内存列表
 3. **id 优先**：所有定位使用 `id`，禁止使用会变动的序号（#）
-4. **状态单调**：`running → pending` 只在执行成功后发生；失败时绝不改为 `pending`，否则下一轮会误把它视为已处理
+4. **状态单调**：`running → pending` 只在**消息成功送达**后发生；送达失败时绝不改为 `pending`，否则下一轮会误把它视为已处理
 5. **终止真实性**：只有在**再次查询列表已无 running 项**时才允许输出 `<promise>`；不得为了逃离循环而撒谎
 6. **空列表即完成**：若从一开始就没有 `running` 项（或 `.harness` 不存在），这是合法的终止态，可直接输出 `<promise>待办项执行成功</promise>`
-7. **执行策略一致性**：同一次 Ralph Loop 的所有迭代必须使用同一种执行策略（要么一直默认，要么一直用户策略），不得在不同轮次切换
+7. **执行通道一致性**：同一次 Ralph Loop 的所有迭代必须走 `harness-session-send-user-message` 下发用户命令，不得在不同轮次切换到"本会话直接执行"等其它通道
+8. **消息原文不改写**：下发给关联会话的消息必须是 `### 用户命令` 小节的原文，不得在前后包裹 ralph loop 的元信息 / 解释 / 进度摘要
 
 ## 异常处理
 
 | 场景 | 处理方式 |
 |------|---------|
-| 执行策略（默认或自定义）报错中断 | 保持 `running` 或改 `failed`，在本轮输出中记录错误，不输出 `<promise>`，本轮结束 |
+| `harness-session-send-user-message` 返回错误（非 running / tmuxSessionId 为空 / tmux 报错等） | 保持 `running`（若 skill 自身已改 `failed` 则保留 `failed`），在本轮输出中记录错误，不输出 `<promise>`，本轮结束 |
+| tmux 会话丢失且用户拒绝恢复 | skill 会把 `status` 标为 `failed`；ralph loop 本轮不再尝试改 `pending`，记录并结束本轮 |
+| `### 用户命令` 小节缺失或为空 | 视同失败，保持 `running`，输出"当前 ralph loop 缺失用户命令，无法下发"；**不要**自造一条默认消息 |
 | `.harness/todos.json` 损坏 / 格式异常 | **不要**尝试修复（可能吃掉未保存数据），报告并结束本轮 |
-| 待办项缺少 `title` / `description` | 把能拿到的字段（至少 `id`）交给执行策略，让其自行询问或查阅上下文 |
+| 待办项缺少 `title` / `description` | 只要 `id` 和 `tmuxSessionId` 在，消息仍可下发；title/description 只是辅助信息 |
 | 同一待办项连续多轮失败 | 在本轮日志里明确标注「第 N 轮仍失败」，依赖 `--max-iterations` 兜底终止，避免死循环 |
 | 状态写回失败（磁盘 / 权限） | 视同本轮执行失败：不输出 `<promise>`，报错并等待下一轮 |
-| 用户自定义执行策略本身不合法 / 无法执行 | 视同失败，保持 `running`，输出错误原因；**不要**静默降级到默认策略 |
 ===END PROMPT TEMPLATE===
 ````
 
@@ -221,7 +231,7 @@ bash "$RALPH_SCRIPT" "$(cat "$OUT_FILE")" \
 
 setup 脚本返回后，当前会话继续按 stdout 回显出的 prompt 内容开始**第一轮**：
 
-- 调 `harness-todo-list` 查询 running → 取第一条 → 按注入的「用户自定义执行策略」执行 → 成功改 `pending` → 终止判定
+- 调 `harness-todo-list` 查询 running → 取第一条 → 调用 `harness-session-send-user-message` skill，把注入的「用户命令」原文发给该 todo 关联会话 → 送达成功改 `pending` → 终止判定
 - 后续迭代由 stop hook 在 end-of-turn 时重新注入同一 prompt 让 Claude 继续，**本 skill 不再介入**
 
 ---
@@ -271,17 +281,17 @@ ralph loop 是长循环，必须正面处理超限场景：
 
 - **不要在循环中途修改 `.harness/ralph-loop-<TS>.md`**：会让下一轮 hook 注入的 prompt 与第一轮的 prompt 不一致，违反 ralph "same prompt" 假设
 - **`.harness/ralph-loop-*.md` 是 artifact**：可审计、可复用；不进 git 是用户习惯，可在 `.gitignore` 加 `.harness/ralph-loop-*.md`（不强制）
-- **第一轮归属**：setup 脚本返回后由当前 skill 上下文的 Claude 直接开始工作；第二轮起由 stop hook 接管注入 prompt。用户只需理解"执行策略已经固化在生成的文件末尾"这一件事
-- **与 `harness-todo-finish` 的区别**：本 skill 只把 `running` 改成 `pending`（交还给后续人工/其他流程），**不会**改 `done`；若想改 `done`，要么在执行策略里让模型自己调 `harness-todo-finish`，要么直接用 `/harness-todo-finish`
+- **第一轮归属**：setup 脚本返回后由当前 skill 上下文的 Claude 直接开始工作；第二轮起由 stop hook 接管注入 prompt。用户只需理解"要下发的用户命令已经固化在生成的文件末尾 `### 用户命令` 小节，每轮都原样发给当前 running todo 关联会话"这一件事
+- **与 `harness-todo-finish` 的区别**：本 skill 只把 `running` 改成 `pending`（表示"已下发给关联会话"，后续交由该会话或人工处理），**不会**改 `done`；若想改 `done`，要么在用户命令里明确让关联会话完成后自行调 `harness-todo-finish`，要么在外部直接用 `/harness-todo-finish`
 
 ## 错误文案对照
 
 | 场景 | 文案 |
 |------|------|
-| 生成文件校验失败 | `生成的 .harness/ralph-loop-<TS>.md 缺少 \`### 用户自定义执行策略\` 小节或正文头，判定为写入异常——已中止，请重试` |
+| 生成文件校验失败 | `生成的 .harness/ralph-loop-<TS>.md 缺少 \`### 用户命令\` 小节或正文头，判定为写入异常——已中止，请重试` |
 | running 数 = 0 | `当前无 running 待办项，启动循环会空转直到 max-iterations——已取消` |
 | 已有活跃 loop | `检测到已有活跃 ralph loop（iteration: X / max: Y），继续会覆盖它的状态文件，确认吗？` |
 | 插件未安装 | 见「降级分支」 |
-| 执行策略缺失 | `本 skill 需要你指定"每条 running todo 怎么执行"（比如：用 bash 跑 npm test）。请补充。` |
+| 用户命令缺失 | `本 skill 需要你给出"要发给每条 running todo 关联会话的用户命令"（比如：继续完成当前任务 / 跑一下 npm test）。请补充。` |
 | max-iterations > 20 | `你设的 max-iterations=<N> 较大，每轮是独立完整 Claude 回合；确认继续吗？` |
 | `.harness/todos.json` 损坏 | `.harness/todos.json 格式异常，不尝试修复（可能吃掉未保存数据），请先人工修复` |

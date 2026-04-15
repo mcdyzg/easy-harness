@@ -44,7 +44,18 @@ if [ -z "$TODO_ID" ]; then
   exit 0
 fi
 
-# 7. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
+# 7. 本轮结束 → 待办项状态置为 pending（仅当当前为 running，避免覆盖 done/failed）
+mkdir -p "${CLAUDE_PLUGIN_ROOT}/log" 2>/dev/null || true
+npx --yes tsx -e "
+  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.ts';
+  const store = new TodoStore(process.argv[1]);
+  const todo = store.get(process.argv[2]);
+  if (!todo) process.exit(0);
+  if (todo.status !== 'running') process.exit(0);
+  store.update(process.argv[2], { status: 'pending' });
+" "$CWD" "$TODO_ID" 2>>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.err.log" || true
+
+# 8. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
 TS=$(date +%s)
 NOTICE_SESSION="notice-${TODO_ID}-${TS}"
 PROMPT="调用 harness-notice-user skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
