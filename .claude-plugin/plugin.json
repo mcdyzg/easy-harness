@@ -1,7 +1,7 @@
 {
   "name": "easy-harness",
   "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "skills": [
     "./skills/harness-todo-list",
     "./skills/harness-todo-create",
@@ -9,6 +9,6 @@
     "./skills/harness-todo-finish",
     "./skills/harness-session-send-user-message",
     "./skills/harness-notice-user",
-    "./skills/harness-todo-poll"
+    "./skills/harness-todo-polling"
   ]
 }
