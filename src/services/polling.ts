@@ -64,8 +64,9 @@ export function tick(
 
     // 3a. 越界：尝试动态扩队
     if (focusIndex >= queue.length) {
+      const queueSet = new Set(queue);
       const newIds = todos
-        .filter((t) => t.status === "running" && !queue.includes(t.id) && !seen.has(t.id))
+        .filter((t) => t.status === "running" && !queueSet.has(t.id) && !seen.has(t.id))
         .map((t) => t.id);
       queue.push(...newIds);
       if (focusIndex >= queue.length) {

@@ -35,7 +35,6 @@ describe("initialState", () => {
 });
 
 const liveSession = () => true;
-const deadSession = () => false;
 
 describe("tick —— 终止条件", () => {
   it("整表无 running 时返回 terminate", () => {
@@ -122,6 +121,18 @@ describe("tick —— 推进（焦点已 pending）", () => {
     ]);
     expect(newState.queue).toEqual(["a", "b", "c"]);
     expect(newState.focusIndex).toBe(2);
+  });
+});
+
+describe("tick —— 推进（焦点已终态）", () => {
+  it("焦点已 done 时，推进到下一个 running", () => {
+    const state = { queue: ["a", "b"], focusIndex: 0, seen: new Set(["a"]) };
+    const todos = [todo("a", "done"), todo("b", "running")];
+    const { actions, newState } = tick(state, todos, liveSession);
+    expect(actions).toEqual([
+      { type: "trigger", id: "b", tmuxSessionId: "harness-b", title: "todo-b" },
+    ]);
+    expect(newState.focusIndex).toBe(1);
   });
 });
 
