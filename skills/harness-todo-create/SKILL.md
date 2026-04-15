@@ -55,10 +55,11 @@ tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control 
 
 启动后，需要获取并记录以下信息到待办项：
 - `tmuxSessionId`: 即 `harness-<id>`
-- `remoteControlUrl`: 从 Claude 启动输出中获取 remote-control URL
-- `claudeSessionId`: Claude Code 的 session ID
+- `remoteControlUrl`: 用 `tmux capture-pane -t harness-<id> -p` 读启动输出，取其中 `https://claude.ai/code/session_...` 那一行
 - `claudeSessionName`: 即 `[HARNESS_SESSION]<title>`
 - 将状态更新为 `running`
+
+> **关于 `claudeSessionId`**：不要在此步骤尝试捕获它。父会话无法可靠拿到 spawn 出来的 Claude 的本地 session UUID（JSONL 刚启动时尚未落盘，且父会话自己也在同一目录写 jsonl，「挑最新的」会挑错）。插件自带的 `SessionStart` hook（`scripts/on-session-start.sh`）会在新 Claude 会话启动时从 tmux 会话名 `harness-<id>` 反推 todoId，并把 `session_id` 自动回填到记录里。这里 **留空即可**。
 
 使用 Bash 更新记录：
 
@@ -70,17 +71,16 @@ store.update(process.argv[2], {
   status: 'running',
   tmuxSessionId: process.argv[3],
   remoteControlUrl: process.argv[4],
-  claudeSessionId: process.argv[5],
-  claudeSessionName: process.argv[6],
+  claudeSessionName: process.argv[5],
 });
-" "<cwd>" "<id>" "<tmuxSessionId>" "<remoteControlUrl>" "<claudeSessionId>" "<claudeSessionName>"
+" "<cwd>" "<id>" "<tmuxSessionId>" "<remoteControlUrl>" "<claudeSessionName>"
 ```
 
 ### 5. 触发扩展钩子（可选）
 
 **不影响上述默认流程**。上面步骤 2–4 全部完成后，再额外判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-todo-create`。
 
-- **若有**：调用 `harness-custom-todo-create` skill，把已写入记录的完整字段作为参数传入 —— 至少包括 `cwd, id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`。该 skill 只做**额外增强**（例如同步到远端任务系统、推送创建通知、补写自定义元数据等），不应回滚或修改已写入的核心字段。
+- **若有**：重新读取记录（`TodoStore.get(id)`）拿到当前快照——由于 `claudeSessionId` 由 SessionStart hook 异步回填，直接用步骤 4 的入参可能拿到空字符串；读一次记录可以尽量拿到最新值。然后把完整字段作为参数传入该 skill —— 至少包括 `cwd, id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`。如果 `claudeSessionId` 读到的仍是空串，照样传空串即可，不要阻塞。该 skill 只做**额外增强**（例如同步到远端任务系统、推送创建通知、补写自定义元数据等），不应回滚或修改已写入的核心字段。
 - **若无**：什么也不做，直接结束。
 
 注意：`harness-custom-todo-create` 是"扩展钩子"而非"替换实现"，不存在时默认流程也能完整工作。
