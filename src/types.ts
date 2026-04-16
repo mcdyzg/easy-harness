@@ -9,6 +9,7 @@ export interface TodoItem {
   remoteControlUrl: string;
   claudeSessionId: string;
   claudeSessionName: string;
+  firstMessageSent: boolean;
 }
 
 export interface NoticeMessage {

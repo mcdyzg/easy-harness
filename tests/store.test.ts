@@ -27,6 +27,7 @@ describe("TodoStore", () => {
     remoteControlUrl: "",
     claudeSessionId: "",
     claudeSessionName: "",
+    firstMessageSent: false,
     ...overrides,
   });
 
