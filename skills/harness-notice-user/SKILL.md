@@ -72,10 +72,32 @@ console.log(JSON.stringify(turn));
 
 #### 4a. 检查自定义渠道
 
-判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-notice-user`。
+读取 `<cwd>/.harness/config.json`，检查 `notice-user` 事件是否有 hook 配置：
 
-- **若有**：调用 `harness-custom-notice-user` skill，把上述五个字段作为参数传入（按该 skill 自身约定的格式）。
-- **若无**：走默认渠道（4b）。
+```bash
+npx --yes tsx -e "
+import fs from 'node:fs';
+import path from 'node:path';
+const configPath = path.join(process.argv[1], '.harness', 'config.json');
+if (!fs.existsSync(configPath)) { console.log('false'); process.exit(0); }
+try {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  const hooks = config.hooks?.['notice-user'];
+  console.log(hooks && hooks.length > 0 ? 'true' : 'false');
+} catch { console.log('false'); }
+" "<cwd>"
+```
+
+- **输出 `true`**：调用 `runHooks` 执行配置的 hooks，**跳过** 4b 的默认控制台输出：
+
+  ```bash
+  npx --yes tsx -e "
+  import { runHooks } from '<pluginRoot>/src/services/hooks.ts';
+  await runHooks(process.argv[1], 'notice-user', JSON.parse(process.argv[2]));
+  " "<cwd>" '<NoticeMessage JSON>'
+  ```
+
+- **输出 `false`**：走默认渠道（4b）。
 
 #### 4b. 默认渠道（控制台输出）
 
