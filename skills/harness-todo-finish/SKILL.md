@@ -122,11 +122,13 @@ store.update(process.argv[2], { status: process.argv[3] });
 npx --yes tsx -e "
 import { TodoStore } from '<plugin-dir>/src/store.ts';
 import { runHooks } from '<plugin-dir>/src/services/hooks.ts';
-const store = new TodoStore(process.argv[1]);
-const todo = store.get(process.argv[2]);
-if (todo) {
-  await runHooks(process.argv[1], 'todo-finish', { cwd: process.argv[1], ...todo });
-}
+(async () => {
+  const store = new TodoStore(process.argv[1]);
+  const todo = store.get(process.argv[2]);
+  if (todo) {
+    await runHooks(process.argv[1], 'todo-finish', { cwd: process.argv[1], ...todo });
+  }
+})();
 " "<cwd>" "<todo-id>"
 ```
 

@@ -93,7 +93,9 @@ try {
   ```bash
   npx --yes tsx -e "
   import { runHooks } from '<pluginRoot>/src/services/hooks.ts';
-  await runHooks(process.argv[1], 'notice-user', JSON.parse(process.argv[2]));
+  (async () => {
+    await runHooks(process.argv[1], 'notice-user', JSON.parse(process.argv[2]));
+  })();
   " "<cwd>" '<NoticeMessage JSON>'
   ```
 

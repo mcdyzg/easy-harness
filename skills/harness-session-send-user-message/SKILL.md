@@ -128,7 +128,7 @@ tmux has-session -t "<todo.tmuxSessionId>" 2>/dev/null
   ```bash
   SESSION_NAME="<todo.claudeSessionName>"
   TMUX_NAME="<todo.tmuxSessionId>"
-  tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '当前任务信息是：<todo.description>；当前待办项的id是<todo.id>'"
+  tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '你被分配了以下任务，当用户说「开始」「执行」等指令时，立即按描述执行：<todo.description>（待办项id：<todo.id>）'"
   ```
 
   等待 Claude Code 启动完成后（约 2-3 秒），继续第 4 步发送消息。

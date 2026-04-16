@@ -48,10 +48,10 @@ console.log(id);
 ```bash
 SESSION_NAME="[HARNESS_SESSION]<title>"
 TMUX_NAME="harness-<id>"
-tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '当前被分配了以下任务：
+tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '你被分配了以下任务，当用户说「开始」「执行」等指令时，立即按描述执行：
 - 标题：<title>
 - 描述：<description>
-后续根据用户指令完成任务。待办项的id是<id>'"
+（待办项id：<id>）'"
 ```
 
 ### 4. 记录会话信息
@@ -89,11 +89,13 @@ store.update(process.argv[2], {
 npx --yes tsx -e "
 import { TodoStore } from '<plugin-dir>/src/store.ts';
 import { runHooks } from '<plugin-dir>/src/services/hooks.ts';
-const store = new TodoStore(process.argv[1]);
-const todo = store.get(process.argv[2]);
-if (todo) {
-  await runHooks(process.argv[1], 'todo-create', { cwd: process.argv[1], ...todo });
-}
+(async () => {
+  const store = new TodoStore(process.argv[1]);
+  const todo = store.get(process.argv[2]);
+  if (todo) {
+    await runHooks(process.argv[1], 'todo-create', { cwd: process.argv[1], ...todo });
+  }
+})();
 " "<cwd>" "<id>"
 ```
 
