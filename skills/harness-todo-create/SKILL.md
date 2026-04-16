@@ -78,9 +78,20 @@ store.update(process.argv[2], {
 
 ### 5. 触发扩展钩子（可选）
 
-**不影响上述默认流程**。上面步骤 2–4 全部完成后，再额外判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-todo-create`。
+**不影响上述默认流程**。上面步骤 2–4 全部完成后，再额外执行 `.harness/config.json` 中 `todo-create` 事件配置的 hooks。
 
-- **若有**：重新读取记录（`TodoStore.get(id)`）拿到当前快照——由于 `claudeSessionId` 由 SessionStart hook 异步回填，直接用步骤 4 的入参可能拿到空字符串；读一次记录可以尽量拿到最新值。然后把完整字段作为参数传入该 skill —— 至少包括 `cwd, id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`。如果 `claudeSessionId` 读到的仍是空串，照样传空串即可，不要阻塞。该 skill 只做**额外增强**（例如同步到远端任务系统、推送创建通知、补写自定义元数据等），不应回滚或修改已写入的核心字段。
-- **若无**：什么也不做，直接结束。
+先重新读取记录（`TodoStore.get(id)`）拿到当前快照——由于 `claudeSessionId` 由 SessionStart hook 异步回填，直接用步骤 4 的入参可能拿到空字符串；读一次记录可以尽量拿到最新值。
 
-注意：`harness-custom-todo-create` 是"扩展钩子"而非"替换实现"，不存在时默认流程也能完整工作。
+```bash
+npx --yes tsx -e "
+import { TodoStore } from '<plugin-dir>/src/store.ts';
+import { runHooks } from '<plugin-dir>/src/services/hooks.ts';
+const store = new TodoStore(process.argv[1]);
+const todo = store.get(process.argv[2]);
+if (todo) {
+  await runHooks(process.argv[1], 'todo-create', { cwd: process.argv[1], ...todo });
+}
+" "<cwd>" "<id>"
+```
+
+若 `.harness/config.json` 不存在或 `todo-create` 事件无配置，静默跳过，不影响默认流程。
