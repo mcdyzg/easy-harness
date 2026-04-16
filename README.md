@@ -54,81 +54,87 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 
 ## Customization
 
-Easy Harness 的核心 skills 在关键流程节点都预留了 **`harness-custom-*`** 扩展钩子，约定俗成的命名规则是：把默认 skill 名前缀里的 `harness-` 替换成 `harness-custom-`。
+Easy Harness 的核心 skills 在关键流程节点预留了扩展钩子，通过 `.harness/config.json` 配置。
 
-通用语义：
+### 配置文件
 
-- **扩展而非替换**：钩子不存在时默认流程完整工作；存在时在默认流程的指定节点被额外调用，用于做增量增强。
-- **发现机制**：默认 skill 在运行时检查当前会话「可用 skills 列表」中是否含同名 `harness-custom-*`，有则调用并传入约定字段。
-- **执行约束**：所有 custom skill 都在 `claude -p` 非交互模式下被调用，完成动作后应立即结束响应；只做增强，不应破坏默认流程已写入的核心字段。
+在项目的 `.harness/config.json`（与 `todos.json` 同级）中添加 `hooks` 字段：
 
-下面列出当前已经预留的扩展点，未来新增的 `harness-custom-*` 也会继续追加在本节中。
+```json
+{
+  "hooks": {
+    "todo-create": [
+      {
+        "type": "command",
+        "command": "curl -X POST https://example.com/api/tasks -d @-"
+      }
+    ],
+    "todo-finish": [
+      {
+        "type": "skill",
+        "skill": "my-custom-finish-hook"
+      }
+    ],
+    "notice-user": [
+      {
+        "type": "command",
+        "command": "python3 ./scripts/send-feishu.py"
+      }
+    ]
+  }
+}
+```
 
-### `harness-custom-todo-create` — 任务创建后的扩展钩子
+### Hook 类型
 
-`harness-todo-create` 默认会在 `.harness/todos.json` 写入记录并通过 tmux 启动本地 Claude Code 会话。如果希望在创建完成后追加自定义动作 —— 例如 **同步到远端任务系统 / 推送创建通知 / 写入额外元数据 / 触发 CI 预热** 等，可以提供该钩子。
+| type | 必填字段 | 说明 |
+|------|----------|------|
+| `command` | `command` | 执行 shell 命令，事件上下文通过 stdin JSON 传入 |
+| `skill` | `skill` | 调用指定名称的 Claude Code skill，事件上下文作为参数传入 |
 
-**触发时机**：`harness-todo-create` 完成「分析描述 → 写入记录 → 启动 tmux 会话 → 回写元数据」之后。
+### 事件
 
-**传入参数**（创建完成后的完整字段）：
+| 事件名 | 触发时机 | 语义 |
+|--------|----------|------|
+| `todo-create` | 待办项创建完成后（记录已写入、tmux 会话已启动） | 追加增强（默认流程始终完整执行） |
+| `todo-finish` | 待办项完成后（tmux 已关闭、状态已更新） | 追加增强（默认流程始终完整执行） |
+| `notice-user` | 通知生成后 | 替代默认控制台输出（有配置走 hooks，无配置走控制台） |
 
-| 字段 | 说明 |
-| --- | --- |
-| `cwd` | 待办项所在工作目录 |
-| `id` | 自动生成的待办项 ID |
-| `title` | 由默认 skill 总结出的简短标题（10–20 字） |
-| `description` | 用户原始描述（若来自 meego 等需求源，已被补全） |
-| `status` | 此时固定为 `running` |
-| `tmuxSessionId` | 已启动的 tmux 会话 ID（`harness-<id>`） |
-| `remoteControlUrl` | Claude 启动时获取到的 remote-control URL |
-| `claudeSessionId` | Claude Code 的 session ID |
-| `claudeSessionName` | `[HARNESS_SESSION]<title>` |
+### 执行规则
 
-**典型用法**：调用远端 API 登记任务、投递"新任务已创建"卡片到 IM、把 `remoteControlUrl` 同步到团队看板等。
+- 同一事件下多个 hook 按数组顺序逐个执行
+- 单个 hook 失败不影响后续 hook
+- 配置文件不存在或事件无配置时静默跳过
 
-**注意**：不要修改或删除已写入 `.harness/todos.json` 的核心字段，否则会破坏默认流程的契约。
+### Payload 示例
 
-### `harness-custom-todo-finish` — 任务完成后的扩展钩子
+`todo-create` 和 `todo-finish` 的 stdin JSON：
 
-`harness-todo-finish` 默认会关闭 tmux 会话并把记录状态改为 `done` / `failed`。如果希望在完成后追加自定义动作 —— 例如 **在远端任务系统里关单 / 把团队看板卡片移到 Done 列 / 发送"任务已完成"通知 / 归档产出物** 等，可以提供该钩子。
+```json
+{
+  "cwd": "/path/to/project",
+  "id": "abc123",
+  "title": "实现登录功能",
+  "description": "用户描述...",
+  "status": "running",
+  "tmuxSessionId": "harness-abc123",
+  "remoteControlUrl": "https://...",
+  "claudeSessionId": "session_...",
+  "claudeSessionName": "[HARNESS_SESSION]实现登录功能"
+}
+```
 
-**触发时机**：`harness-todo-finish` 完成「关闭 tmux 会话 → 更新记录状态」之后。
+`notice-user` 的 stdin JSON：
 
-**传入参数**（完成后的完整字段，`status` 已是最终态）：
-
-| 字段 | 说明 |
-| --- | --- |
-| `cwd` | 待办项所在工作目录 |
-| `id` | 待办项 ID |
-| `title` | 待办项标题 |
-| `description` | 用户原始描述 |
-| `status` | 最终状态，`done` 或 `failed` |
-| `tmuxSessionId` | 已关闭的 tmux 会话 ID（保留作为历史） |
-| `remoteControlUrl` | 远程控制链接（保留作为历史） |
-| `claudeSessionId` | Claude Code 的 session ID |
-| `claudeSessionName` | `[HARNESS_SESSION]<title>` |
-
-**典型用法**：调用远端 API 关单、把卡片移到对应列、投递"任务已完成/失败"IM 通知、把产出物上传到制品库等。
-
-**注意**：不要回滚或修改已写入 `.harness/todos.json` 的核心字段，否则会破坏默认流程的契约。
-
-### `harness-custom-notice-user` — 通知投递的扩展钩子
-
-`harness-notice-user` 默认把通知输出到控制台（由 tmux 通知会话承接显示）。如果希望把通知推送到 **飞书 / Slack / 钉钉 / 邮件 / 企业微信** 等自定义渠道，提供该钩子即可。
-
-**触发时机**：`harness-notice-user` 组装好通知内容、即将走默认控制台输出之前。
-
-**传入参数**：
-
-| 字段 | 说明 |
-| --- | --- |
-| `title` | 待办项标题，来自 `todo.title` |
-| `status` | 待办项状态，值域 `pending \| running \| done \| failed` |
-| `summary` | 基于最后一轮对话生成的中文摘要（结论型、提问型或进行中描述） |
-| `tmuxSessionId` | 关联的 tmux 会话 ID，方便用户快速 attach 回去查看 |
-| `remoteControlUrl` | 远程控制链接（如启用） |
-
-**典型用法**：用 curl / webhook SDK / 邮件网关等投递到目标渠道；如果渠道支持富文本，可用 `status` 做颜色/图标区分，用 `tmuxSessionId` + `remoteControlUrl` 生成可点击的快速跳转入口。
+```json
+{
+  "title": "实现登录功能",
+  "status": "done",
+  "summary": "已完成登录功能的实现...",
+  "tmuxSessionId": "harness-abc123",
+  "remoteControlUrl": "https://..."
+}
+```
 
 ## Data
 
