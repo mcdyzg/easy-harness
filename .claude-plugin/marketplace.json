@@ -9,7 +9,7 @@
     {
       "name": "easy-harness",
       "description": "Terminal-based todo management with tmux-backed Claude Code sessions",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "source": "./",
       "author": {
         "name": "harness",
