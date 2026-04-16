@@ -8,12 +8,13 @@ export interface CreateSessionOptions {
 export interface ClaudeCommandOptions {
   sessionName: string;
   todoId: string;
+  title: string;
   description: string;
 }
 
 export function buildClaudeCommand(options: ClaudeCommandOptions): string {
-  const { sessionName, todoId, description } = options;
-  const prompt = `当前任务信息是：${description}；当前待办项的id是${todoId}`;
+  const { sessionName, todoId, title, description } = options;
+  const prompt = `当前被分配了以下任务：\n- 标题：${title}\n- 描述：${description}\n后续根据用户指令完成任务。待办项的id是${todoId}`;
   return `claude -n '${sessionName}' --remote-control '${prompt}'`;
 }
 
