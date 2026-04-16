@@ -133,30 +133,25 @@ tmux has-session -t "<todo.tmuxSessionId>" 2>/dev/null
 
   等待 Claude Code 启动完成后（约 2-3 秒），继续第 4 步发送消息。
 
-### 3.5 构建最终消息
+### 4. 构建消息并发送
 
-根据 `todo.firstMessageSent` 决定是否在用户消息前拼接待办项上下文：
+在脚本内部完成消息构建和 tmux 发送，避免中间环节引入额外字符：
 
 ```bash
 npx tsx -e "
 import { TodoStore } from '<plugin-dir>/src/store.ts';
 import { buildFirstMessage } from '<plugin-dir>/src/services/message.ts';
+import { sendKeysToSession } from '<plugin-dir>/src/services/tmux.ts';
 const store = new TodoStore(process.argv[1]);
 const todo = store.get(process.argv[2]);
 const finalMessage = buildFirstMessage(todo, process.argv[3]);
-console.log(finalMessage);
+sendKeysToSession(todo.tmuxSessionId, finalMessage);
 " "<cwd>" "<todo.id>" "<用户输入的文本>"
 ```
 
-stdout 即为最终要发送的消息（`finalMessage`）。如果是首次发送，会自动拼接待办项标题、描述、ID 作为上下文前缀；非首次则直接透传用户原始文本。
+如果是首次发送（`todo.firstMessageSent` 为 falsy），会自动拼接待办项标题、描述、ID 作为上下文前缀；非首次则直接透传用户原始文本。
 
-### 4. 执行发送
-
-```bash
-tmux send-keys -t "<todo.tmuxSessionId>" '<finalMessage>' Enter
-```
-
-如果 tmux 命令本身报错，把 tmux 的 stderr 转给用户。
+如果脚本报错，把 stderr 转给用户。
 
 ### 5. 更新首次发送标记
 
