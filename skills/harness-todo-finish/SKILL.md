@@ -116,12 +116,21 @@ store.update(process.argv[2], { status: process.argv[3] });
 
 ### 7. 触发扩展钩子（可选）
 
-**不影响上述默认流程**。步骤 4–6 全部完成后，再额外判断：当前会话系统提示里"可用 skills 列表"中是否含 `harness-custom-todo-finish`。
+**不影响上述默认流程**。步骤 4–6 全部完成后，再额外执行 `.harness/config.json` 中 `todo-finish` 事件配置的 hooks。
 
-- **若有**：调用 `harness-custom-todo-finish` skill，把已写入记录的完整字段作为参数传入 —— 至少包括 `cwd, id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`（其中 `status` 已是最终态）。该 skill 只做**额外增强**（例如在远端任务系统里关单、在团队看板把卡片移到 Done 列、发送"任务已完成"通知等），不应回滚或修改已写入的核心字段。
-- **若无**：什么也不做，直接结束。
+```bash
+npx --yes tsx -e "
+import { TodoStore } from '<plugin-dir>/src/store.ts';
+import { runHooks } from '<plugin-dir>/src/services/hooks.ts';
+const store = new TodoStore(process.argv[1]);
+const todo = store.get(process.argv[2]);
+if (todo) {
+  await runHooks(process.argv[1], 'todo-finish', { cwd: process.argv[1], ...todo });
+}
+" "<cwd>" "<todo-id>"
+```
 
-注意：`harness-custom-todo-finish` 是"扩展钩子"而非"替换实现"，不存在时默认流程也能完整工作。
+若 `.harness/config.json` 不存在或 `todo-finish` 事件无配置，静默跳过，不影响默认流程。
 
 ## 注意事项
 
