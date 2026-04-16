@@ -16,14 +16,15 @@ const makeTodo = (overrides: Partial<TodoItem> = {}): TodoItem => ({
 });
 
 describe("buildFirstMessage", () => {
-  it("首次消息拼接上下文前缀", () => {
+  it("首次消息拼接上下文前缀（单行）", () => {
     const todo = makeTodo({ firstMessageSent: false });
     const result = buildFirstMessage(todo, "开始执行");
 
+    expect(result).not.toContain("\n");
     expect(result).toContain("【待办项上下文】");
-    expect(result).toContain("- 标题：实现登录功能");
-    expect(result).toContain("- 描述：使用 JWT 实现用户登录注册");
-    expect(result).toContain("- 待办项 ID：abc123def456");
+    expect(result).toContain("标题：实现登录功能");
+    expect(result).toContain("描述：使用 JWT 实现用户登录注册");
+    expect(result).toContain("待办项 ID：abc123def456");
     expect(result).toContain("以下是用户指令：");
     expect(result).toContain("开始执行");
   });
