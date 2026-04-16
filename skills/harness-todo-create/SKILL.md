@@ -50,8 +50,7 @@ SESSION_NAME="[HARNESS_SESSION]<title>"
 TMUX_NAME="harness-<id>"
 tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '你被分配了以下任务，当用户说「开始」「执行」等指令时，立即按描述执行：
 - 标题：<title>
-- 描述：<description>
-（待办项id：<id>）'"
+- 描述：<description>'"
 ```
 
 ### 4. 记录会话信息
