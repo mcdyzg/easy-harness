@@ -109,4 +109,76 @@ describe("runHooks", () => {
     await runHooks(tmpDir, "todo-create", { id: "1" });
     expect(child_process.execSync).not.toHaveBeenCalled();
   });
+
+  it("兼容嵌套 { hooks: [...] } 格式（与 Claude Code hooks.json 一致）", async () => {
+    writeConfig({
+      hooks: {
+        "todo-create": [
+          {
+            hooks: [
+              { type: "command", command: "echo nested" },
+            ],
+          },
+        ],
+      },
+    });
+    const payload = { id: "abc" };
+    await runHooks(tmpDir, "todo-create", payload);
+    expect(child_process.execSync).toHaveBeenCalledWith("echo nested", {
+      input: JSON.stringify(payload),
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  });
+
+  it("嵌套格式内多个 hook 均被展平执行", async () => {
+    writeConfig({
+      hooks: {
+        "notice-user": [
+          {
+            hooks: [
+              { type: "command", command: "echo h1" },
+              { type: "command", command: "echo h2" },
+            ],
+          },
+        ],
+      },
+    });
+    await runHooks(tmpDir, "notice-user", { title: "t" });
+    expect(child_process.execSync).toHaveBeenCalledTimes(2);
+  });
+
+  it("type=skill 时兼容 command 属性名", async () => {
+    writeConfig({
+      hooks: {
+        "notice-user": [
+          { type: "skill", command: "harness-custom-notice-user" },
+        ],
+      },
+    });
+    const payload = { title: "test" };
+    await runHooks(tmpDir, "notice-user", payload);
+    const call = (child_process.execSync as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(call[0]).toContain("claude");
+    expect(call[0]).toContain("harness-custom-notice-user");
+  });
+
+  it("嵌套格式 + skill 使用 command 属性名的完整场景", async () => {
+    writeConfig({
+      hooks: {
+        "todo-create": [
+          {
+            hooks: [
+              { type: "skill", command: "harness-custom-notice-user" },
+            ],
+          },
+        ],
+      },
+    });
+    const payload = { id: "abc", title: "test" };
+    await runHooks(tmpDir, "todo-create", payload);
+    const call = (child_process.execSync as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(call[0]).toContain("harness-custom-notice-user");
+  });
 });

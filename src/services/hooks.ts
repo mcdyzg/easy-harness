@@ -9,13 +9,20 @@ interface CommandHook {
 
 interface SkillHook {
   type: "skill";
-  skill: string;
+  /** 兼容 skill 和 command 两种写法 */
+  skill?: string;
+  command?: string;
 }
 
 type HookConfig = CommandHook | SkillHook;
 
+/**
+ * 兼容两种 config 格式：
+ * 扁平: [{ type, command/skill }]
+ * 嵌套: [{ hooks: [{ type, command/skill }] }]（与 Claude Code hooks.json 格式一致）
+ */
 interface HarnessConfig {
-  hooks?: Record<string, HookConfig[]>;
+  hooks?: Record<string, (HookConfig | { hooks: HookConfig[] })[]>;
 }
 
 /**
@@ -36,8 +43,15 @@ export async function runHooks(
     return;
   }
 
-  const hooks = config.hooks?.[event];
-  if (!hooks || hooks.length === 0) return;
+  const rawHooks = config.hooks?.[event];
+  if (!rawHooks || rawHooks.length === 0) return;
+
+  // 展平嵌套格式：{ hooks: [...] } → 内部数组
+  const hooks: HookConfig[] = rawHooks.flatMap((item) =>
+    "hooks" in item && Array.isArray((item as { hooks: HookConfig[] }).hooks)
+      ? (item as { hooks: HookConfig[] }).hooks
+      : [item as HookConfig]
+  );
 
   const payloadJson = JSON.stringify(payload);
 
@@ -49,8 +63,11 @@ export async function runHooks(
           stdio: ["pipe", "pipe", "pipe"],
         });
       } else if (hook.type === "skill") {
+        // 兼容 skill / command 两种属性名
+        const skillName = hook.skill || hook.command;
+        if (!skillName) continue;
         const escaped = payloadJson.replace(/'/g, "'\\''");
-        execSync(`claude -p '调用 ${hook.skill} skill，参数：${escaped}'`, {
+        execSync(`claude -p '调用 ${skillName} skill，参数：${escaped}'`, {
           stdio: ["pipe", "pipe", "pipe"],
         });
       }
