@@ -23,3 +23,20 @@ export interface NoticeMessage {
 export interface MessageSender {
   send(message: NoticeMessage): Promise<void>;
 }
+
+interface ScheduleItemBase {
+  name: string;
+  cron: string;
+}
+
+export interface SkillSchedule extends ScheduleItemBase {
+  type: "skill";
+  skill: string;
+}
+
+export interface CommandSchedule extends ScheduleItemBase {
+  type: "command";
+  command: string;
+}
+
+export type ScheduleItem = SkillSchedule | CommandSchedule;
