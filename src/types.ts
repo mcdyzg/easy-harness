@@ -32,6 +32,7 @@ interface ScheduleItemBase {
 export interface SkillSchedule extends ScheduleItemBase {
   type: "skill";
   skill: string;
+  args?: string;
 }
 
 export interface CommandSchedule extends ScheduleItemBase {

@@ -67,6 +67,24 @@ describe("validateSchedules", () => {
     expect(warnings[0]).toContain("未知 type");
   });
 
+  it("type=skill 带 args 时透传 args", () => {
+    const input = [
+      { name: "s", cron: "0 9 * * *", type: "skill" as const, skill: "x", args: "我是消息" },
+    ];
+    const { valid } = validateSchedules(input);
+    expect(valid).toHaveLength(1);
+    expect(valid[0]).toMatchObject({ type: "skill", skill: "x", args: "我是消息" });
+  });
+
+  it("type=skill 无 args 时不设置 args", () => {
+    const input = [
+      { name: "s", cron: "0 9 * * *", type: "skill" as const, skill: "x" },
+    ];
+    const { valid } = validateSchedules(input);
+    expect(valid).toHaveLength(1);
+    expect((valid[0] as any).args).toBeUndefined();
+  });
+
   it("name 缺失或为空时跳过", () => {
     const input = [
       { cron: "0 9 * * *", type: "command", command: "echo" } as any,
@@ -117,7 +135,22 @@ describe("executeSchedule", () => {
     const call = (child_process.execSync as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(call[0]).toContain("claude");
     expect(call[0]).toContain("harness-todo-list");
+    expect(call[0]).not.toContain("参数");
     expect(call[1]).toMatchObject({ cwd: "/tmp/test-cwd" });
+  });
+
+  it("type=skill 带 args 时把参数拼入 prompt", () => {
+    const item: ScheduleItem = {
+      name: "with-args",
+      cron: "0 9 * * *",
+      type: "skill",
+      skill: "harness-custom-notice-user",
+      args: "我是消息",
+    };
+    executeSchedule(item, "/tmp/test-cwd");
+    const call = (child_process.execSync as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toContain("harness-custom-notice-user");
+    expect(call[0]).toContain("参数：我是消息");
   });
 
   it("执行失败时不抛出，返回 error", () => {

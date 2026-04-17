@@ -2,7 +2,7 @@ import { Cron } from "croner";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { ScheduleItem } from "../types.js";
+import type { ScheduleItem, SkillSchedule } from "../types.js";
 
 export interface ValidationResult {
   valid: ScheduleItem[];
@@ -42,7 +42,14 @@ export function validateSchedules(items: unknown[]): ValidationResult {
         warnings.push(`[${name}] type=skill 但缺少 skill 字段`);
         continue;
       }
-      valid.push({ name, cron: String(s.cron), type: "skill", skill: s.skill });
+      const entry: SkillSchedule = {
+        name,
+        cron: String(s.cron),
+        type: "skill",
+        skill: s.skill,
+      };
+      if (typeof s.args === "string") entry.args = s.args;
+      valid.push(entry);
     } else if (s.type === "command") {
       if (!s.command || typeof s.command !== "string") {
         warnings.push(`[${name}] type=command 但缺少 command 字段`);
@@ -93,8 +100,11 @@ export function executeSchedule(item: ScheduleItem, cwd: string): ExecuteResult 
     if (item.type === "command") {
       execSync(item.command, { cwd, stdio: ["pipe", "pipe", "pipe"] });
     } else {
-      const escaped = item.skill.replace(/'/g, "'\\''");
-      execSync(`claude -p '调用 ${escaped} skill'`, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+      const skillEscaped = item.skill.replace(/'/g, "'\\''");
+      const prompt = item.args
+        ? `调用 ${skillEscaped} skill，参数：${item.args.replace(/'/g, "'\\''")}`
+        : `调用 ${skillEscaped} skill`;
+      execSync(`claude -p '${prompt}'`, { cwd, stdio: ["pipe", "pipe", "pipe"] });
     }
     return { ok: true, durationMs: Date.now() - start };
   } catch (err) {
