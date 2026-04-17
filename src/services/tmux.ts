@@ -25,7 +25,9 @@ export function buildCreateSessionCommand(options: CreateSessionOptions): string
 
 export function buildSendKeysCommand(sessionName: string, text: string): string {
   const escaped = text.replace(/'/g, "'\\''");
-  return `tmux send-keys -t ${sessionName} '${escaped}' Enter`;
+  // 内容和 Enter 一起发会导致某些场景下（如较长的单行文本）无法提交，
+  // 拆成两次：先发内容，sleep 0.3s 让终端处理完，再发 Enter
+  return `tmux send-keys -t ${sessionName} '${escaped}' && sleep 0.3 && tmux send-keys -t ${sessionName} Enter`;
 }
 
 export function parseTmuxSessionId(

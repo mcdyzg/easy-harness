@@ -25,6 +25,15 @@ describe("tmux command builders", () => {
     expect(cmd).toContain("Enter");
   });
 
+  it("splits text and Enter into two tmux calls with sleep in between", () => {
+    const cmd = buildSendKeysCommand("harness-abc123", "hello");
+    // 内容和 Enter 拆成两次发送，避免某些场景下一次性发送导致无法提交
+    expect(cmd).toContain("sleep 0.3");
+    expect(cmd.match(/tmux send-keys/g)?.length).toBe(2);
+    expect(cmd).toContain("'hello'");
+    expect(cmd).toMatch(/tmux send-keys -t harness-abc123 Enter$/);
+  });
+
   it("parses tmux session id from list output", () => {
     const output = "harness-abc123: 1 windows (created Wed Apr  9 10:00:00 2026)";
     const id = parseTmuxSessionId(output, "harness-abc123");
