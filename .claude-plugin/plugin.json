@@ -9,6 +9,9 @@
     "./skills/harness-todo-finish",
     "./skills/harness-session-send-user-message",
     "./skills/harness-notice-user",
-    "./skills/harness-todo-polling"
+    "./skills/harness-todo-polling",
+    "./skills/harness-schedule-start",
+    "./skills/harness-schedule-stop",
+    "./skills/harness-schedule-restart"
   ]
 }
