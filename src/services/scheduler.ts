@@ -98,3 +98,59 @@ export function executeSchedule(item: ScheduleItem, cwd: string): ExecuteResult 
     return { ok: false, error: msg, durationMs: Date.now() - start };
   }
 }
+
+function log(level: "info" | "warn" | "error", msg: string): void {
+  const line = `[${new Date().toISOString()}] ${level.padEnd(5)} ${msg}`;
+  if (level === "error") console.error(line);
+  else console.log(line);
+}
+
+export interface RunSchedulerOptions {
+  cwd: string;
+}
+
+export function runScheduler(opts: RunSchedulerOptions): void {
+  const { cwd } = opts;
+  const { valid, warnings } = loadSchedulesFromConfig(cwd);
+
+  for (const w of warnings) {
+    log("warn", w);
+  }
+
+  if (valid.length === 0) {
+    log("info", "no valid schedules found, exiting");
+    process.exit(0);
+  }
+
+  log("info", `scheduler started: ${valid.length} schedules loaded`);
+  for (const s of valid) {
+    const detail = s.type === "skill" ? `skill: ${s.skill}` : `command: ${s.command}`;
+    log("info", `  [${s.name}] cron="${s.cron}" (${detail})`);
+  }
+
+  const crons: Cron[] = [];
+
+  for (const item of valid) {
+    const job = new Cron(item.cron, () => {
+      const detail = item.type === "skill" ? `skill: ${item.skill}` : `command: ${item.command}`;
+      log("info", `[${item.name}] triggered (${detail})`);
+
+      const result = executeSchedule(item, cwd);
+
+      if (result.ok) {
+        log("info", `[${item.name}] completed (${result.durationMs}ms)`);
+      } else {
+        log("error", `[${item.name}] failed: ${result.error}`);
+      }
+    });
+    crons.push(job);
+  }
+
+  const shutdown = (sig: string) => {
+    log("info", `received ${sig}, stopping`);
+    for (const c of crons) c.stop();
+    process.exit(0);
+  };
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+}
