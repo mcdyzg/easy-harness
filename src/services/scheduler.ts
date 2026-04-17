@@ -18,6 +18,10 @@ export function validateSchedules(items: unknown[]): ValidationResult {
     const s = item as Record<string, unknown>;
     const name = String(s.name ?? "");
 
+    if (!name) {
+      warnings.push(`schedule 缺少 name 字段，跳过`);
+      continue;
+    }
     if (seen.has(name)) {
       warnings.push(`重复的 name "${name}"，跳过`);
       continue;

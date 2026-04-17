@@ -56,6 +56,27 @@ describe("validateSchedules", () => {
     expect(valid).toHaveLength(0);
     expect(warnings).toHaveLength(0);
   });
+
+  it("未知 type 时跳过并 warn", () => {
+    const input = [
+      { name: "bad-type", cron: "0 9 * * *", type: "weird" } as any,
+    ];
+    const { valid, warnings } = validateSchedules(input);
+    expect(valid).toHaveLength(0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("未知 type");
+  });
+
+  it("name 缺失或为空时跳过", () => {
+    const input = [
+      { cron: "0 9 * * *", type: "command", command: "echo" } as any,
+      { name: "", cron: "0 9 * * *", type: "command", command: "echo" } as any,
+    ];
+    const { valid, warnings } = validateSchedules(input);
+    expect(valid).toHaveLength(0);
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]).toContain("缺少 name");
+  });
 });
 
 import { executeSchedule } from "../../src/services/scheduler.js";
