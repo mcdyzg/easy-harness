@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decideRecoveryAction } from "../../src/services/recovery.js";
+import { decideRecoveryAction, buildResumeCommand } from "../../src/services/recovery.js";
 import type { TodoItem } from "../../src/types.js";
 
 const mkTodo = (overrides: Partial<TodoItem> = {}): TodoItem => ({
@@ -32,5 +32,20 @@ describe("decideRecoveryAction", () => {
 
   it("running + 挂 + 无 claudeSessionId → fresh", () => {
     expect(decideRecoveryAction(mkTodo({ claudeSessionId: "" }), false)).toBe("fresh");
+  });
+});
+
+describe("buildResumeCommand", () => {
+  it("构造 tmux new-session + claude --resume 命令（不带 --remote-control）", () => {
+    const todo = mkTodo({
+      tmuxSessionId: "harness-abc",
+      claudeSessionId: "session_xxx",
+      claudeSessionName: "[HARNESS_SESSION]t",
+    });
+    const cmd = buildResumeCommand(todo);
+    expect(cmd).toContain("tmux new-session -d -s harness-abc");
+    expect(cmd).toContain("claude -n '[HARNESS_SESSION]t'");
+    expect(cmd).toContain("--resume session_xxx");
+    expect(cmd).not.toContain("--remote-control");
   });
 });

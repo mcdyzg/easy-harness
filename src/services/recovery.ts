@@ -11,3 +11,8 @@ export function decideRecoveryAction(
   if (todo.claudeSessionId) return "resume";
   return "fresh";
 }
+
+export function buildResumeCommand(todo: TodoItem): string {
+  const inner = `claude -n '${todo.claudeSessionName}' --resume ${todo.claudeSessionId}`;
+  return `tmux new-session -d -s ${todo.tmuxSessionId} "${inner}"`;
+}
