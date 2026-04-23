@@ -24,6 +24,29 @@ describe("formatNoticeMessage", () => {
     expect(text).toContain("harness-abc123");
     expect(text).toContain("http://localhost:3000/rc/abc");
   });
+
+  it("renders metadata block when metadata is non-empty, sorted by key", () => {
+    const out = formatNoticeMessage({
+      ...message,
+      metadata: { meego: "https://meego.feishu.cn/1", code: "https://github.com/x/y/pull/1" },
+    });
+    expect(out).toContain("关联:");
+    // key 字母序：code 在 meego 之前
+    const codeIdx = out.indexOf("  code: https://github.com/x/y/pull/1");
+    const meegoIdx = out.indexOf("  meego: https://meego.feishu.cn/1");
+    expect(codeIdx).toBeGreaterThan(-1);
+    expect(meegoIdx).toBeGreaterThan(codeIdx);
+  });
+
+  it("omits metadata block when metadata is absent", () => {
+    const out = formatNoticeMessage(message);
+    expect(out).not.toContain("关联:");
+  });
+
+  it("omits metadata block when metadata is an empty object", () => {
+    const out = formatNoticeMessage({ ...message, metadata: {} });
+    expect(out).not.toContain("关联:");
+  });
 });
 
 describe("ConsoleMessageSender", () => {

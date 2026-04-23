@@ -20,6 +20,7 @@ export interface NoticeMessage {
   assistantMessage: string;
   tmuxSessionId: string;
   remoteControlUrl: string;
+  metadata?: Record<string, string>;
 }
 
 export interface MessageSender {
