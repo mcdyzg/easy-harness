@@ -180,7 +180,7 @@ export function runPolling(opts: RunPollingOptions): void {
             log("error", `recovery failed for ${action.id}: ${(e as Error).message}`);
             break;
           }
-          const cmd = buildSendKeysCommand(action.tmuxSessionId, message);
+          const cmd = buildSendKeysCommand(todo.tmuxSessionId, message);
           try {
             execSync(cmd);
             log("info", `triggered ${action.id} (${action.title})`);
