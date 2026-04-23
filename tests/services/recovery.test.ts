@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { decideRecoveryAction, buildResumeCommand, buildFreshSpawnCommand, parseRemoteControlUrl } from "../../src/services/recovery.js";
+import { decideRecoveryAction, buildResumeCommand, buildFreshSpawnCommand, parseRemoteControlUrl, ensureSessionAlive } from "../../src/services/recovery.js";
 import type { TodoItem } from "../../src/types.js";
+import type { RecoveryDeps } from "../../src/services/recovery.js";
 
 const mkTodo = (overrides: Partial<TodoItem> = {}): TodoItem => ({
   id: "abc",
@@ -89,6 +90,132 @@ Ready.`;
 https://claude.ai/code/session_second`;
     expect(parseRemoteControlUrl(pane)).toBe(
       "https://claude.ai/code/session_first"
+    );
+  });
+});
+
+function makeDeps(overrides: Partial<RecoveryDeps> = {}): {
+  deps: RecoveryDeps;
+  calls: string[];
+  updates: Record<string, Partial<TodoItem>>;
+} {
+  const calls: string[] = [];
+  const updates: Record<string, Partial<TodoItem>> = {};
+  // 若 override 提供了 sessionExists，包一层以保留 calls 追踪
+  const sessionExistsImpl = overrides.sessionExists
+    ? (name: string) => {
+        calls.push(`has:${name}`);
+        return (overrides.sessionExists as RecoveryDeps["sessionExists"])(name);
+      }
+    : (name: string) => {
+        calls.push(`has:${name}`);
+        return false;
+      };
+  const { sessionExists: _ignored, ...restOverrides } = overrides;
+  const deps: RecoveryDeps = {
+    sessionExists: sessionExistsImpl,
+    exec: (cmd) => {
+      calls.push(`exec:${cmd}`);
+    },
+    capturePane: () => {
+      calls.push(`capture`);
+      return "https://claude.ai/code/session_new";
+    },
+    sleep: () => {
+      calls.push("sleep");
+    },
+    updateTodo: (id, patch) => {
+      calls.push(`update:${id}`);
+      updates[id] = { ...(updates[id] ?? {}), ...patch };
+    },
+    log: () => {
+      calls.push("log");
+    },
+    ...restOverrides,
+  };
+  return { deps, calls, updates };
+}
+
+describe("ensureSessionAlive", () => {
+  const runningTodo = mkTodo();
+
+  it("tmux 活着 → 只调一次 has-session 就返回", () => {
+    const { deps, calls } = makeDeps({
+      sessionExists: () => true,
+    });
+    ensureSessionAlive("/cwd", runningTodo, deps);
+    expect(calls.filter((c) => c.startsWith("exec:")).length).toBe(0);
+    expect(calls.some((c) => c.startsWith("has:"))).toBe(true);
+  });
+
+  it("status 非 running → 不做恢复", () => {
+    const { deps, calls } = makeDeps();
+    ensureSessionAlive("/cwd", mkTodo({ status: "done" }), deps);
+    expect(calls.filter((c) => c.startsWith("exec:")).length).toBe(0);
+  });
+
+  it("有 claudeSessionId → 跑 resume 命令，不抓 URL，不改 firstMessageSent", () => {
+    let callNo = 0;
+    const { deps, calls, updates } = makeDeps({
+      sessionExists: () => {
+        callNo++;
+        return callNo >= 2;
+      },
+    });
+    ensureSessionAlive("/cwd", runningTodo, deps);
+    const execCalls = calls.filter((c) => c.startsWith("exec:"));
+    expect(execCalls.length).toBe(1);
+    expect(execCalls[0]).toContain("--resume session_xxx");
+    expect(execCalls[0]).not.toContain("--remote-control");
+    expect(calls).not.toContain("capture");
+    expect(updates["abc"]).toBeUndefined();
+  });
+
+  it("无 claudeSessionId → 跑 fresh 命令，抓 URL，重置 firstMessageSent", () => {
+    let callNo = 0;
+    const { deps, calls, updates } = makeDeps({
+      sessionExists: () => {
+        callNo++;
+        return callNo >= 2;
+      },
+    });
+    const todo = mkTodo({
+      claudeSessionId: "",
+      firstMessageSent: true,
+    });
+    ensureSessionAlive("/cwd", todo, deps);
+    const execCalls = calls.filter((c) => c.startsWith("exec:"));
+    expect(execCalls.length).toBe(1);
+    expect(execCalls[0]).toContain("--remote-control");
+    expect(updates["abc"]).toEqual({
+      remoteControlUrl: "https://claude.ai/code/session_new",
+      firstMessageSent: false,
+    });
+  });
+
+  it("分支 A resume 启动失败（第二次 has-session 仍然 false）→ 退化到分支 B", () => {
+    // has 调用序列：1st false（初始挂）、2nd false（resume 后仍挂，触发退化）、3rd true（B 起来了）
+    let callNo = 0;
+    const { deps, calls, updates } = makeDeps({
+      sessionExists: () => {
+        callNo++;
+        return callNo >= 3;
+      },
+    });
+    ensureSessionAlive("/cwd", runningTodo, deps);
+    const execCalls = calls.filter((c) => c.startsWith("exec:"));
+    expect(execCalls.length).toBe(2);
+    expect(execCalls[0]).toContain("--resume");
+    expect(execCalls[1]).toContain("--remote-control");
+    expect(updates["abc"]).toMatchObject({ firstMessageSent: false });
+  });
+
+  it("两个分支都失败 → 抛错", () => {
+    const { deps } = makeDeps({
+      sessionExists: () => false,
+    });
+    expect(() => ensureSessionAlive("/cwd", runningTodo, deps)).toThrow(
+      /recover/i
     );
   });
 });
