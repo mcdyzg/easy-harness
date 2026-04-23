@@ -15,7 +15,8 @@ export interface TodoItem {
 export interface NoticeMessage {
   title: string;
   status: string;
-  summary: string;
+  userMessage: string;
+  assistantMessage: string;
   tmuxSessionId: string;
   remoteControlUrl: string;
 }

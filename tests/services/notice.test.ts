@@ -9,7 +9,8 @@ describe("formatNoticeMessage", () => {
   const message: NoticeMessage = {
     title: "Fix login bug",
     status: "done",
-    summary: "已修复登录页面的表单验证问题",
+    userMessage: "帮我修下登录页验证",
+    assistantMessage: "已修复登录页面的表单验证问题",
     tmuxSessionId: "harness-abc123",
     remoteControlUrl: "http://localhost:3000/rc/abc",
   };
@@ -18,6 +19,7 @@ describe("formatNoticeMessage", () => {
     const text = formatNoticeMessage(message);
     expect(text).toContain("Fix login bug");
     expect(text).toContain("done");
+    expect(text).toContain("帮我修下登录页验证");
     expect(text).toContain("已修复登录页面的表单验证问题");
     expect(text).toContain("harness-abc123");
     expect(text).toContain("http://localhost:3000/rc/abc");
@@ -31,7 +33,8 @@ describe("ConsoleMessageSender", () => {
     await sender.send({
       title: "Test",
       status: "done",
-      summary: "test summary",
+      userMessage: "test user message",
+      assistantMessage: "test assistant message",
       tmuxSessionId: "tmux-1",
       remoteControlUrl: "http://localhost:3000",
     });

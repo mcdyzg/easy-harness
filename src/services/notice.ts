@@ -4,7 +4,8 @@ export function formatNoticeMessage(message: NoticeMessage): string {
   return [
     `📋 ${message.title}`,
     `状态: ${message.status}`,
-    `摘要: ${message.summary}`,
+    `用户: ${message.userMessage}`,
+    `助手: ${message.assistantMessage}`,
     `Tmux Session: ${message.tmuxSessionId}`,
     `Remote URL: ${message.remoteControlUrl}`,
   ].join("\n");

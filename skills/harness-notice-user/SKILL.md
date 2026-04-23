@@ -1,11 +1,11 @@
 ---
 name: harness-notice-user
-description: "Send a notification message about a harness todo item's status. Reads the Claude session JSONL log to extract the last conversation turn, generates a summary, and sends it through the configured message channel. Use when a harness session ends and needs to notify the user."
+description: "Send a notification message about a harness todo item's status. Reads the Claude session JSONL log to extract the last conversation turn, forwards the raw user/assistant messages, and sends them through the configured message channel. Use when a harness session ends and needs to notify the user."
 ---
 
 # Harness Notice User
 
-发送 harness 待办项的状态通知。从 Claude 会话日志中提取最后一轮对话，生成摘要并推送。
+发送 harness 待办项的状态通知。从 Claude 会话日志中提取最后一轮对话，原样透传 userMessage / assistantMessage 并推送（**不做摘要**，避免 LLM 多一轮推理）。
 
 ## 输入
 
@@ -47,30 +47,23 @@ console.log(JSON.stringify(turn));
 
 输出 JSON：`{ userMessage, assistantMessage }`。
 
-### 3. 生成摘要
+### 3. 组装 NoticeMessage
 
-基于上一步的 `userMessage` 和 `assistantMessage`，生成中文摘要。先判断 `assistantMessage` 属于哪一类：
-
-- **结论型**（已完成、已得出答案、已给出判断）：摘要尽可能完整保留结论——关键结果、数据、文件路径、判定都要带上；若原文本身已足够精炼，可直接原样输出。**不要**为了凑字数而裁剪结论信息。
-- **提问型 / 待决策型**（assistant 在向用户提问、列出选项、请求确认）：直接原样输出 assistant 的问题或选项，保持用户能一眼看清"要我回答什么"。
-- **其他（进行中、描述动作）**：生成 50–100 字概括，突出"做了什么 / 在等什么"。
-
-通用约束：
-
-- 单段，不分行
-- 不含代码块、不含 markdown 列表
-- 结论型 / 提问型允许超过 100 字，以信息完整为先
-
-### 4. 组装 NoticeMessage 并发送
+**不要**生成摘要——上一步拿到的 `userMessage` / `assistantMessage` 原文直接作为独立字段透传，避免 LLM 再多一轮推理拖慢响应。
 
 字段映射：
 - `title` ← `todo.title`
 - `status` ← `todo.status`（值域 `pending | running | done | failed`）
-- `summary` ← 上一步生成的摘要
+- `userMessage` ← 上一步 `turn.userMessage` 原文（不裁剪、不改写）
+- `assistantMessage` ← 上一步 `turn.assistantMessage` 原文（不裁剪、不改写）
 - `tmuxSessionId` ← `todo.tmuxSessionId`
 - `remoteControlUrl` ← `todo.remoteControlUrl`
 
-#### 4a. 检查自定义渠道
+> **重要**：`userMessage` / `assistantMessage` 是透传的用户原文，可能包含引号、反引号、`$`、换行等任意字符。下一步发送时**一律用 heredoc + stdin 管道**传 JSON，不要把原文塞到命令行参数里——否则 shell 会把内容当代码解析。
+
+### 4. 发送通知
+
+#### 4a. 检查是否配置了自定义渠道
 
 读取 `<cwd>/.harness/config.json`，检查 `notice-user` 事件是否有 hook 配置：
 
@@ -88,32 +81,37 @@ try {
 " "<cwd>"
 ```
 
-- **输出 `true`**：调用 `runHooks` 执行配置的 hooks，**跳过** 4b 的默认控制台输出：
+- **输出 `true`** → 走 4b（自定义渠道）
+- **输出 `false`** → 走 4c（默认控制台）
 
-  ```bash
-  npx --yes tsx -e "
-  import { runHooks } from '<pluginRoot>/src/services/hooks.ts';
-  (async () => {
-    await runHooks(process.argv[1], 'notice-user', JSON.parse(process.argv[2]));
-  })();
-  " "<cwd>" '<NoticeMessage JSON>'
-  ```
+以下两种渠道都通过 heredoc `<<'NOTICE_EOF'` 把 NoticeMessage JSON 从 stdin 灌入；单引号包裹的分隔符保证 heredoc 内容按字面传递，不做任何变量展开或命令替换。
 
-- **输出 `false`**：走默认渠道（4b）。
-
-#### 4b. 默认渠道（控制台输出）
+#### 4b. 自定义渠道（走 hooks）
 
 ```bash
 npx --yes tsx -e "
+import { readFileSync } from 'node:fs';
+import { runHooks } from '<pluginRoot>/src/services/hooks.ts';
+(async () => {
+  const payload = JSON.parse(readFileSync(0, 'utf-8'));
+  await runHooks(process.argv[1], 'notice-user', payload);
+})();
+" "<cwd>" <<'NOTICE_EOF'
+<NoticeMessage JSON 原样写在这里，多行亦可>
+NOTICE_EOF
+```
+
+#### 4c. 默认渠道（控制台输出）
+
+```bash
+npx --yes tsx -e "
+import { readFileSync } from 'node:fs';
 import { formatNoticeMessage } from '<pluginRoot>/src/services/notice.ts';
-console.log(formatNoticeMessage({
-  title: process.argv[1],
-  status: process.argv[2],
-  summary: process.argv[3],
-  tmuxSessionId: process.argv[4],
-  remoteControlUrl: process.argv[5],
-}));
-" "<title>" "<status>" "<summary>" "<tmuxSessionId>" "<remoteControlUrl>"
+const payload = JSON.parse(readFileSync(0, 'utf-8'));
+console.log(formatNoticeMessage(payload));
+" <<'NOTICE_EOF'
+<NoticeMessage JSON 原样写在这里，多行亦可>
+NOTICE_EOF
 ```
 
 stdout 会被 tmux 通知会话承接显示。
