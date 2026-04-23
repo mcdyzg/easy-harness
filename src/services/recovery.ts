@@ -79,6 +79,7 @@ export function ensureSessionAlive(
   }
 
   // 分支 B（action === "fresh" 或 A 退化）
+  lastExecError = "";
   try {
     deps.exec(buildFreshSpawnCommand(todo));
   } catch (e) {
@@ -134,7 +135,7 @@ export function createDefaultDeps(cwd: string): RecoveryDeps {
       }
     },
     sleep: (ms) => {
-      execSync(`sleep ${ms / 1000}`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
     },
     updateTodo: (id, patch) => {
       store.update(id, patch);

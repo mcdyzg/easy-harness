@@ -230,4 +230,29 @@ describe("ensureSessionAlive", () => {
       /tmux: command not found/
     );
   });
+
+  it("分支 A exec 报错但分支 B 成功后仍失败 → 抛错只带 B 的错误信息，不带 A 的", () => {
+    let callNo = 0;
+    let execNo = 0;
+    const { deps } = makeDeps({
+      sessionExists: () => {
+        callNo++;
+        // 1st/2nd: 初始+A 都挂；3rd: B 之后还挂（触发抛错）
+        return false;
+      },
+      exec: () => {
+        execNo++;
+        if (execNo === 1) throw new Error("A-branch error");
+        // 第二次 exec (B) 成功
+      },
+    });
+    try {
+      ensureSessionAlive("/cwd", runningTodo, deps);
+      throw new Error("should have thrown");
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toContain("failed to recover tmux session");
+      expect(msg).not.toContain("A-branch error");
+    }
+  });
 });
