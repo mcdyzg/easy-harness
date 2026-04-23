@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { debugLog } from "../utils/debug-log.js";
 
 interface CommandHook {
   type: "command";
@@ -53,26 +54,34 @@ export async function runHooks(
       : [item as HookConfig]
   );
 
+  debugLog("hooks", "event-dispatch", { event, hookCount: hooks.length });
+
   const payloadJson = JSON.stringify(payload);
 
-  for (const hook of hooks) {
+  for (let i = 0; i < hooks.length; i++) {
+    const hook = hooks[i];
+    const start = Date.now();
     try {
       if (hook.type === "command") {
+        debugLog("hooks", "hook-exec", { event, index: i, type: "command", detail: hook.command });
         execSync(hook.command, {
           input: payloadJson,
           stdio: ["pipe", "pipe", "pipe"],
         });
+        debugLog("hooks", "hook-ok", { event, index: i, durationMs: Date.now() - start });
       } else if (hook.type === "skill") {
-        // 兼容 skill / command 两种属性名
         const skillName = hook.skill || hook.command;
         if (!skillName) continue;
+        debugLog("hooks", "hook-exec", { event, index: i, type: "skill", detail: skillName });
         const escaped = payloadJson.replace(/'/g, "'\\''");
         execSync(`claude -p '调用 ${skillName} skill，参数：${escaped}'`, {
           stdio: ["pipe", "pipe", "pipe"],
         });
+        debugLog("hooks", "hook-ok", { event, index: i, durationMs: Date.now() - start });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      debugLog("hooks", "hook-fail", { event, index: i, error: msg });
       console.error(`[harness-hooks] ${event} hook 执行失败: ${msg}`);
     }
   }
