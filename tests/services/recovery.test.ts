@@ -218,4 +218,16 @@ describe("ensureSessionAlive", () => {
       /recover/i
     );
   });
+
+  it("恢复失败时，抛出的 Error 里带上 exec 的错误信息", () => {
+    const { deps } = makeDeps({
+      sessionExists: () => false,
+      exec: () => {
+        throw new Error("tmux: command not found");
+      },
+    });
+    expect(() => ensureSessionAlive("/cwd", runningTodo, deps)).toThrow(
+      /tmux: command not found/
+    );
+  });
 });

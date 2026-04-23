@@ -50,6 +50,8 @@ export function ensureSessionAlive(
   todo: TodoItem,
   deps: RecoveryDeps
 ): void {
+  let lastExecError = "";
+
   const aliveNow = deps.sessionExists(todo.tmuxSessionId);
   const action = decideRecoveryAction(todo, aliveNow);
   if (action === "noop") return;
@@ -57,8 +59,8 @@ export function ensureSessionAlive(
   if (action === "resume") {
     try {
       deps.exec(buildResumeCommand(todo));
-    } catch {
-      // new-session 已存在等错误一律交给二次 has-session 判定
+    } catch (e) {
+      lastExecError = (e as Error).message;
     }
     deps.sleep(2000);
     if (deps.sessionExists(todo.tmuxSessionId)) {
@@ -75,15 +77,16 @@ export function ensureSessionAlive(
   // 分支 B（action === "fresh" 或 A 退化）
   try {
     deps.exec(buildFreshSpawnCommand(todo));
-  } catch {
-    // 同上
+  } catch (e) {
+    lastExecError = (e as Error).message;
   }
   deps.sleep(2000);
   if (!deps.sessionExists(todo.tmuxSessionId)) {
+    const detail = lastExecError ? `: ${lastExecError}` : "";
     deps.log(
-      `${new Date().toISOString()} todo=${todo.id} branch=B result=failed`
+      `${new Date().toISOString()} todo=${todo.id} branch=B result=failed${detail}`
     );
-    throw new Error(`failed to recover tmux session for todo ${todo.id}`);
+    throw new Error(`failed to recover tmux session for todo ${todo.id}${detail}`);
   }
 
   const pane = deps.capturePane(todo.tmuxSessionId);
