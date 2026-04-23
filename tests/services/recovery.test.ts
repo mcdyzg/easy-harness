@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decideRecoveryAction, buildResumeCommand, buildFreshSpawnCommand } from "../../src/services/recovery.js";
+import { decideRecoveryAction, buildResumeCommand, buildFreshSpawnCommand, parseRemoteControlUrl } from "../../src/services/recovery.js";
 import type { TodoItem } from "../../src/types.js";
 
 const mkTodo = (overrides: Partial<TodoItem> = {}): TodoItem => ({
@@ -65,5 +65,30 @@ describe("buildFreshSpawnCommand", () => {
     expect(cmd).toContain("修复登录 bug");
     expect(cmd).toContain("登录按钮点击无反应");
     expect(cmd).toContain("abc");
+  });
+});
+
+describe("parseRemoteControlUrl", () => {
+  it("从多行输出中提取 claude.ai/code/session_... URL", () => {
+    const pane = `Welcome to Claude Code
+Session started
+Remote control: https://claude.ai/code/session_abc123def
+Ready.`;
+    expect(parseRemoteControlUrl(pane)).toBe(
+      "https://claude.ai/code/session_abc123def"
+    );
+  });
+
+  it("没匹配到时返回 undefined", () => {
+    expect(parseRemoteControlUrl("no url here")).toBeUndefined();
+    expect(parseRemoteControlUrl("")).toBeUndefined();
+  });
+
+  it("取第一条匹配", () => {
+    const pane = `https://claude.ai/code/session_first
+https://claude.ai/code/session_second`;
+    expect(parseRemoteControlUrl(pane)).toBe(
+      "https://claude.ai/code/session_first"
+    );
   });
 });

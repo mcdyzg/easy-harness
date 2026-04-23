@@ -30,3 +30,8 @@ export function buildFreshSpawnCommand(todo: TodoItem): string {
     claudeCommand,
   });
 }
+
+export function parseRemoteControlUrl(paneOutput: string): string | undefined {
+  const match = paneOutput.match(/https:\/\/claude\.ai\/code\/session_[A-Za-z0-9_-]+/);
+  return match?.[0];
+}
