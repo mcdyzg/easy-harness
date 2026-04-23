@@ -98,4 +98,18 @@ describe("TodoStore", () => {
     const parsed = JSON.parse(raw);
     expect(parsed[0]).not.toHaveProperty("metadata");
   });
+
+  it("drops empty metadata object on update", () => {
+    store.add(makeTodo({ id: "clr-1", metadata: { meego: "https://x" } }));
+    store.update("clr-1", { metadata: {} });
+    const got = store.get("clr-1");
+    expect(got?.metadata).toBeUndefined();
+  });
+
+  it("replaces metadata wholesale on update (no deep-merge)", () => {
+    store.add(makeTodo({ id: "rep-1", metadata: { meego: "https://old", jira: "https://j" } }));
+    store.update("rep-1", { metadata: { meego: "https://new" } });
+    const got = store.get("rep-1");
+    expect(got?.metadata).toEqual({ meego: "https://new" });
+  });
 });

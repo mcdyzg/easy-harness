@@ -51,7 +51,11 @@ export class TodoStore {
     const items = this.read();
     const index = items.findIndex((item) => item.id === id);
     if (index === -1) return;
-    items[index] = { ...items[index], ...updates };
+    const merged = { ...items[index], ...updates };
+    if (merged.metadata && Object.keys(merged.metadata).length === 0) {
+      delete merged.metadata;
+    }
+    items[index] = merged;
     this.write(items);
   }
 
