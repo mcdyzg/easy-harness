@@ -225,10 +225,12 @@ git commit -m "feat(store): normalize empty metadata on update; guard replacemen
 
 ## Task 4: Add `metadata` to `NoticeMessage` and render in `formatNoticeMessage`
 
+> **⚠ 执行时的 drift**：本 plan 起稿时 `NoticeMessage` 的字段是 `summary: string`，`tests/services/notice.test.ts` 不存在。执行期间历史 commit `3f5b133 feat: 调整notice方式` 落地，把 `NoticeMessage` 改为 `userMessage + assistantMessage` 两字段，且已创建 `tests/services/notice.test.ts`。**实际执行版本**（commit `2f42411`）做了对齐：保留 `userMessage`/`assistantMessage` 行不动、只追加 `metadata?` 字段与"关联:"块；测试文件是 Modify 而非 Create。下方代码块是起稿时的历史版本，真实落地以 commit `2f42411` 为准。
+
 **Files:**
 - Modify: `src/types.ts:15-21`
 - Modify: `src/services/notice.ts:3-11`
-- Create: `tests/services/notice.test.ts`
+- Modify: `tests/services/notice.test.ts`（执行时该文件已存在；原 plan 写的是 Create）
 
 - [ ] **Step 1: Write the failing test (new file)**
 
@@ -465,6 +467,8 @@ git commit -m "feat(skill): add Extras column rendering metadata in todo-list"
 ---
 
 ## Task 7: Update `harness-notice-user` SKILL.md — metadata 透传
+
+> **⚠ 执行时的 drift**：起稿时 SKILL.md 里的组装段标题是 `### 4. 组装 NoticeMessage 并发送`；历史 commit `3f5b133` 把文件重构后，现实中的标题是 `### 3. 组装 NoticeMessage`，且字段映射列表里的字段已从 `summary` 改成 `userMessage + assistantMessage`。**实际执行版本**（commit `00c08ad`）是在 `### 3. 组装 NoticeMessage` 的字段映射末尾追加 `metadata ← todo.metadata` 一行；4a/4b/4c 的 bash 块未动。下方 Step 2 里写的 `### 4. 组装 NoticeMessage 并发送` 是起稿时的历史引用，真实落地以 commit `00c08ad` 为准。
 
 **Files:**
 - Modify: `skills/harness-notice-user/SKILL.md`
