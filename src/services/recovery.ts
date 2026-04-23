@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { TodoStore } from "../store.js";
+import { debugLog } from "../utils/debug-log.js";
 
 export type RecoveryAction = "noop" | "resume" | "fresh";
 
@@ -58,11 +59,14 @@ export function ensureSessionAlive(
 
   const aliveNow = deps.sessionExists(todo.tmuxSessionId);
   const action = decideRecoveryAction(todo, aliveNow);
+  debugLog("recovery", "enter", { todoId: todo.id, aliveNow, action });
   if (action === "noop") return;
 
   if (action === "resume") {
+    const cmd = buildResumeCommand(todo);
+    debugLog("recovery", "resume-try", { todoId: todo.id, cmd });
     try {
-      deps.exec(buildResumeCommand(todo));
+      deps.exec(cmd);
     } catch (e) {
       lastExecError = (e as Error).message;
     }
@@ -74,11 +78,13 @@ export function ensureSessionAlive(
       if (url) {
         deps.updateTodo(todo.id, { remoteControlUrl: url });
       }
+      debugLog("recovery", "resume-ok", { todoId: todo.id, urlCaptured: !!url });
       deps.log(
         `${new Date().toISOString()} todo=${todo.id} branch=A result=ok`
       );
       return;
     }
+    debugLog("recovery", "resume-fail", { todoId: todo.id, error: lastExecError });
     deps.log(
       `${new Date().toISOString()} todo=${todo.id} branch=A result=failed, falling back to B`
     );
@@ -86,14 +92,17 @@ export function ensureSessionAlive(
 
   // 分支 B（action === "fresh" 或 A 退化）
   lastExecError = "";
+  const freshCmd = buildFreshSpawnCommand(todo);
+  debugLog("recovery", "fresh-try", { todoId: todo.id, cmd: freshCmd });
   try {
-    deps.exec(buildFreshSpawnCommand(todo));
+    deps.exec(freshCmd);
   } catch (e) {
     lastExecError = (e as Error).message;
   }
   deps.sleep(2000);
   if (!deps.sessionExists(todo.tmuxSessionId)) {
     const detail = lastExecError ? `: ${lastExecError}` : "";
+    debugLog("recovery", "fresh-fail", { todoId: todo.id, error: lastExecError });
     deps.log(
       `${new Date().toISOString()} todo=${todo.id} branch=B result=failed${detail}`
     );
@@ -106,6 +115,7 @@ export function ensureSessionAlive(
   if (url) patch.remoteControlUrl = url;
   deps.updateTodo(todo.id, patch);
 
+  debugLog("recovery", "fresh-ok", { todoId: todo.id, urlCaptured: !!url });
   deps.log(`${new Date().toISOString()} todo=${todo.id} branch=B result=ok`);
 }
 
