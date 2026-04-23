@@ -27,6 +27,7 @@ describe("store debug-log smoke", () => {
   afterEach(() => {
     process.chdir(originalCwd);
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    _resetDebugCache();
   });
 
   const makeTodo = (overrides: Partial<TodoItem> = {}): TodoItem => ({
