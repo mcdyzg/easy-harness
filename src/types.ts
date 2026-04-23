@@ -10,6 +10,7 @@ export interface TodoItem {
   claudeSessionId: string;
   claudeSessionName: string;
   firstMessageSent: boolean;
+  metadata?: Record<string, string>;
 }
 
 export interface NoticeMessage {

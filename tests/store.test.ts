@@ -75,4 +75,17 @@ describe("TodoStore", () => {
     store.add(makeTodo({ id: "m2", title: "Second" }));
     expect(store.list()).toHaveLength(2);
   });
+
+  it("round-trips metadata field", () => {
+    const todo = makeTodo({
+      id: "meta-1",
+      metadata: { meego: "https://meego.feishu.cn/story/123", code: "https://github.com/foo/bar/pull/42" },
+    });
+    store.add(todo);
+    const got = store.get("meta-1");
+    expect(got?.metadata).toEqual({
+      meego: "https://meego.feishu.cn/story/123",
+      code: "https://github.com/foo/bar/pull/42",
+    });
+  });
 });
