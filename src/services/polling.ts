@@ -4,6 +4,7 @@ import type { TodoItem } from "../types.js";
 import { TodoStore } from "../store.js";
 import { buildSendKeysCommand } from "./tmux.js";
 import { ensureSessionAlive, createDefaultDeps } from "./recovery.js";
+import { debugLog } from "../utils/debug-log.js";
 
 /** polling 进程内的运行时状态。纯数据，`tick` 不会在原对象上写入 */
 export interface PollingState {
@@ -148,6 +149,11 @@ export function runPolling(opts: RunPollingOptions): void {
 
   let state = initialState(store.list());
   log("info", `polling started: cwd=${cwd} interval=${intervalMinutes}min queue=[${state.queue.join(",")}]`);
+  debugLog("polling", "start", {
+    cwd,
+    intervalMinutes,
+    queue: state.queue,
+  });
 
   // cron 提前声明：execute() 在 tick0 路径可能早于 new Cron 就要引用它
   let cron: Cron | undefined;
@@ -155,16 +161,23 @@ export function runPolling(opts: RunPollingOptions): void {
   // 单次执行：读 todos → tick → 执行 actions
   const execute = (): void => {
     const todos = store.list();
+    debugLog("polling", "tick-begin", {
+      focusIndex: state.focusIndex,
+      queueLen: state.queue.length,
+    });
     const { newState, actions } = tick(state, todos, defaultSessionExists);
     state = newState;
+    debugLog("polling", "tick-decision", {
+      actions: actions.map((a) => a.type),
+    });
 
     for (const action of actions) {
       switch (action.type) {
         case "wait":
-          // 本拍无事，不打日志避免噪音
           break;
 
         case "skip":
+          debugLog("polling", "skip", { id: action.id, reason: action.reason });
           log("warn", `skip ${action.id}: ${action.reason}`);
           break;
 
@@ -174,6 +187,11 @@ export function runPolling(opts: RunPollingOptions): void {
             log("warn", `trigger skipped: todo ${action.id} not found`);
             break;
           }
+          debugLog("polling", "trigger", {
+            id: action.id,
+            tmuxSessionId: action.tmuxSessionId,
+            title: action.title,
+          });
           try {
             ensureSessionAlive(cwd, todo, createDefaultDeps(cwd));
           } catch (e) {
@@ -181,16 +199,26 @@ export function runPolling(opts: RunPollingOptions): void {
             break;
           }
           const cmd = buildSendKeysCommand(todo.tmuxSessionId, message);
+          const start = Date.now();
           try {
             execSync(cmd);
+            debugLog("polling", "send-keys-ok", {
+              id: action.id,
+              durationMs: Date.now() - start,
+            });
             log("info", `triggered ${action.id} (${action.title})`);
           } catch (e) {
+            debugLog("polling", "send-keys-fail", {
+              id: action.id,
+              error: (e as Error).message,
+            });
             log("error", `send-keys failed for ${action.id}: ${(e as Error).message}`);
           }
           break;
         }
 
         case "terminate":
+          debugLog("polling", "terminate", { reason: action.reason });
           log("info", `terminate: ${action.reason}`);
           cron?.stop();
           process.exit(0);
