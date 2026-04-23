@@ -81,22 +81,21 @@ describe("tick —— 推进（焦点已 pending）", () => {
     expect(Array.from(newState.seen).sort()).toEqual(["a", "b"]);
   });
 
-  it("跳过 tmux 会话已丢失的待办，继续推进", () => {
+  it("tmux 会话已丢失时也返回 trigger（恢复交给 runner）", () => {
     const state = { queue: ["a", "b", "c"], focusIndex: 0, seen: new Set(["a"]) };
     const todos = [
       todo("a", "pending"),
       todo("b", "running", "harness-b"),
       todo("c", "running", "harness-c"),
     ];
-    // b 会话死了，c 会话活着
+    // b 的 tmux 即便死了也应进入 trigger
     const exists = (id: string) => id === "harness-c";
     const { actions, newState } = tick(state, todos, exists);
     expect(actions).toEqual([
-      { type: "skip", id: "b", reason: "tmux session missing" },
-      { type: "trigger", id: "c", tmuxSessionId: "harness-c", title: "todo-c" },
+      { type: "trigger", id: "b", tmuxSessionId: "harness-b", title: "todo-b" },
     ]);
-    expect(newState.focusIndex).toBe(2);
-    expect(Array.from(newState.seen).sort()).toEqual(["a", "b", "c"]);
+    expect(newState.focusIndex).toBe(1);
+    expect(Array.from(newState.seen).sort()).toEqual(["a", "b"]);
   });
 
   it("跳过 tmuxSessionId 为空字符串的待办", () => {

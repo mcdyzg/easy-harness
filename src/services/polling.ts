@@ -99,14 +99,7 @@ export function tick(
       continue;
     }
 
-    // 3d. tmux 会话已丢失
-    if (!sessionExists(nextTodo.tmuxSessionId)) {
-      actions.push({ type: "skip", id: nextId, reason: "tmux session missing" });
-      seen.add(nextId);
-      continue;
-    }
-
-    // 3e. 命中有效候选，发 trigger
+    // 3d. 命中有效候选，发 trigger
     actions.push({
       type: "trigger",
       id: nextId,
