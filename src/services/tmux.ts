@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { debugLog } from "../utils/debug-log.js";
 
 export interface CreateSessionOptions {
   sessionName: string;
@@ -45,10 +46,24 @@ export function parseTmuxSessionId(
 
 export function createTmuxSession(options: CreateSessionOptions): void {
   const cmd = buildCreateSessionCommand(options);
-  execSync(cmd);
+  debugLog("tmux", "exec", { cmd });
+  try {
+    execSync(cmd);
+    debugLog("tmux", "exec-ok", { cmd });
+  } catch (e) {
+    debugLog("tmux", "exec-fail", { cmd, error: (e as Error).message });
+    throw e;
+  }
 }
 
 export function sendKeysToSession(sessionName: string, text: string): void {
   const cmd = buildSendKeysCommand(sessionName, text);
-  execSync(cmd);
+  debugLog("tmux", "exec", { cmd });
+  try {
+    execSync(cmd);
+    debugLog("tmux", "exec-ok", { cmd });
+  } catch (e) {
+    debugLog("tmux", "exec-fail", { cmd, error: (e as Error).message });
+    throw e;
+  }
 }
