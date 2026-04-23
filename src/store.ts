@@ -39,7 +39,11 @@ export class TodoStore {
 
   add(todo: TodoItem): void {
     const items = this.read();
-    items.push(todo);
+    const normalized = { ...todo };
+    if (normalized.metadata && Object.keys(normalized.metadata).length === 0) {
+      delete normalized.metadata;
+    }
+    items.push(normalized);
     this.write(items);
   }
 

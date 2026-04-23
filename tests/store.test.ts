@@ -88,4 +88,14 @@ describe("TodoStore", () => {
       code: "https://github.com/foo/bar/pull/42",
     });
   });
+
+  it("drops empty metadata object on add", () => {
+    store.add(makeTodo({ id: "empty-1", metadata: {} }));
+    const got = store.get("empty-1");
+    expect(got?.metadata).toBeUndefined();
+
+    const raw = fs.readFileSync(path.join(tmpDir, ".harness", "todos.json"), "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed[0]).not.toHaveProperty("metadata");
+  });
 });
