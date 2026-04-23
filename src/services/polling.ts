@@ -10,7 +10,7 @@ export interface PollingState {
   queue: string[];
   /** 当前焦点在 queue 中的下标；-1 代表尚未开始（tick0 前） */
   focusIndex: number;
-  /** 已 trigger 或已跳过（死会话 / 记录消失）的 id；动态扩队时用它过滤 */
+  /** 已 trigger 或已跳过（tmuxSessionId 为空 / 记录消失）的 id；动态扩队时用它过滤 */
   seen: Set<string>;
 }
 
@@ -32,8 +32,6 @@ export type Action =
 /**
  * 纯函数：基于当前状态与 todos 快照决定下一步。
  * 不修改传入的 state / seen；返回新 state + 动作序列，交给 runner 执行。
- *
- * sessionExists(sessionId): 用于判断 tmux 会话是否存在；注入以保证纯测试。
  */
 export function tick(
   state: PollingState,
