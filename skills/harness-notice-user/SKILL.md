@@ -30,7 +30,7 @@ console.log(JSON.stringify(todo));
 " "<cwd>" "<todoId>"
 ```
 
-输出的 JSON 字段：`id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName`。
+输出的 JSON 字段：`id, title, description, status, tmuxSessionId, remoteControlUrl, claudeSessionId, claudeSessionName, metadata`（`metadata` 可选，字段缺失代表无外链）。
 
 ### 2. 提取最后一轮对话
 
@@ -58,6 +58,7 @@ console.log(JSON.stringify(turn));
 - `assistantMessage` ← 上一步 `turn.assistantMessage` 原文（不裁剪、不改写）
 - `tmuxSessionId` ← `todo.tmuxSessionId`
 - `remoteControlUrl` ← `todo.remoteControlUrl`
+- `metadata` ← `todo.metadata`（可能 `undefined`，保持 `undefined` 透传，**不要**手动补成 `{}`）
 
 > **重要**：`userMessage` / `assistantMessage` 是透传的用户原文，可能包含引号、反引号、`$`、换行等任意字符。下一步发送时**一律用 heredoc + stdin 管道**传 JSON，不要把原文塞到命令行参数里——否则 shell 会把内容当代码解析。
 
