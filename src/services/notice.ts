@@ -1,4 +1,5 @@
 import type { MessageSender, NoticeMessage } from "../types.js";
+import { debugLog } from "../utils/debug-log.js";
 
 export function formatNoticeMessage(message: NoticeMessage): string {
   const lines = [
@@ -20,6 +21,11 @@ export function formatNoticeMessage(message: NoticeMessage): string {
 
 export class ConsoleMessageSender implements MessageSender {
   async send(message: NoticeMessage): Promise<void> {
+    debugLog("notice", "send", {
+      title: message.title,
+      status: message.status,
+      tmuxSessionId: message.tmuxSessionId,
+    });
     console.log(formatNoticeMessage(message));
   }
 }
