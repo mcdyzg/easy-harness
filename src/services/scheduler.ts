@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { ScheduleItem, SkillSchedule } from "../types.js";
+import { debugLog } from "../utils/debug-log.js";
 
 export interface ValidationResult {
   valid: ScheduleItem[];
@@ -136,9 +137,16 @@ export function runScheduler(opts: RunSchedulerOptions): void {
     process.exit(0);
   }
 
+  debugLog("scheduler", "start", { count: valid.length });
   log("info", `scheduler started: ${valid.length} schedules loaded`);
   for (const s of valid) {
     const detail = s.type === "skill" ? `skill: ${s.skill}` : `command: ${s.command}`;
+    debugLog("scheduler", "schedule-loaded", {
+      name: s.name,
+      cron: s.cron,
+      type: s.type,
+      detail,
+    });
     log("info", `  [${s.name}] cron="${s.cron}" (${detail})`);
   }
 
@@ -147,13 +155,23 @@ export function runScheduler(opts: RunSchedulerOptions): void {
   for (const item of valid) {
     const job = new Cron(item.cron, () => {
       const detail = item.type === "skill" ? `skill: ${item.skill}` : `command: ${item.command}`;
+      debugLog("scheduler", "fire", { name: item.name });
       log("info", `[${item.name}] triggered (${detail})`);
 
       const result = executeSchedule(item, cwd);
 
       if (result.ok) {
+        debugLog("scheduler", "fire-ok", {
+          name: item.name,
+          durationMs: result.durationMs ?? 0,
+        });
         log("info", `[${item.name}] completed (${result.durationMs}ms)`);
       } else {
+        debugLog("scheduler", "fire-fail", {
+          name: item.name,
+          durationMs: result.durationMs ?? 0,
+          error: result.error ?? "",
+        });
         log("error", `[${item.name}] failed: ${result.error}`);
       }
     });
