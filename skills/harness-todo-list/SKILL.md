@@ -24,16 +24,25 @@ description: "List harness todo items. Use when the user wants to view the todo 
 | ID | `id` | 待办项 ID |
 | Tmux Session | `tmuxSessionId` | tmux 会话标识 |
 | Remote URL | `remoteControlUrl` | 远程控制链接 |
+| Extras | `metadata` | 外链 bag（按规则渲染，详见下文） |
 
 > 序号（#）是展示时的临时索引，删除待办项后会变动；需要跨会话稳定引用时请使用 ID。
+
+## Extras 单元格渲染规则
+
+- `metadata` 为 `undefined` 或空对象：单元格输出 `—`（em dash）
+- 否则遍历键值对（**按 key 字母序**）：
+  - 值以 `http://` 或 `https://` 开头：渲染为 `[key](value)`
+  - 否则：渲染为 `key: value`
+- 多个条目用 `<br>` 分隔
 
 ## 输出示例
 
 ```markdown
-| # | Status | Title | ID | Tmux Session | Remote URL |
-|---|--------|-------|----|--------------|------------|
-| 1 | 🔵 running | 实现登录功能 | abc123 | harness-abc123 | https://... |
-| 2 | ⚪ pending | 添加单元测试 | def456 | harness-def456 | https://... |
+| # | Status | Title | ID | Tmux Session | Remote URL | Extras |
+|---|--------|-------|----|--------------|------------|--------|
+| 1 | 🔵 running | 实现登录功能 | abc123 | harness-abc123 | https://... | [code](https://github.com/x/y/pull/1)<br>[meego](https://meego.feishu.cn/1) |
+| 2 | ⚪ pending | 添加单元测试 | def456 | harness-def456 | https://... | — |
 ```
 
 ## 相关 Skill
