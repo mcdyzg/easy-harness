@@ -18,6 +18,13 @@ description: "Create a new harness todo item from a description. Analyzes the de
 - 阅读用户提供的描述
 - 如果描述中包含 meego 需求链接或 ID，使用 `/bytedcli` 获取需求详情，补充到描述中
 - 根据描述内容，总结生成一个简短的标题（10-20 个字）
+- 扫描描述中所有 `http(s)://…` URL，按 host 映射到 metadata key，填入下一步的 `metadata` 参数：
+  - host 含 `meego.feishu.cn` 或以 `meego.` 开头 → key = `meego`
+  - host 含 `atlassian.net` 或以 `jira.` 开头 → key = `jira`
+  - host 是 `github.com` 或以 `.bytedance.net` 结尾 → key = `code`
+  - host 含 `figma.com` → key = `figma`
+  - 同 key 多次出现取第一次；认不出的 host 跳过（不乱塞）
+  - 没识别到任何外链：metadata 传 `{}`（store 层会归一化丢弃）
 
 ### 2. 创建待办项记录
 
@@ -39,10 +46,13 @@ store.add({
   claudeSessionId: '',
   claudeSessionName: '',
   firstMessageSent: false,
+  metadata: JSON.parse(process.argv[4] || '{}'),
 });
 console.log(id);
-" "<cwd>" "<title>" "<description>"
+" "<cwd>" "<title>" "<description>" '<metadata-json>'
 ```
+
+其中 `<metadata-json>` 是 Step 1 识别出的 metadata 对象的 JSON 字符串，例如 `{"meego":"https://meego.feishu.cn/story/detail/123"}`；没识别到就传 `{}`。
 
 ### 3. 启动 Claude Code 会话
 
