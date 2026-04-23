@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { debugLog } from "../utils/debug-log.js";
 
 export interface ConversationTurn {
   userMessage: string;
@@ -31,6 +32,7 @@ export function getLastConversationTurn(
   filePath: string
 ): ConversationTurn | undefined {
   if (!fs.existsSync(filePath)) {
+    debugLog("session-log", "parse-ok", { filePath, hasUser: false, hasAssistant: false });
     return undefined;
   }
 
@@ -71,10 +73,16 @@ export function getLastConversationTurn(
     }
 
     if (lastUser && lastAssistant) {
+      debugLog("session-log", "parse-ok", { filePath, hasUser: true, hasAssistant: true });
       return { userMessage: lastUser, assistantMessage: lastAssistant };
     }
   }
 
+  debugLog("session-log", "parse-ok", {
+    filePath,
+    hasUser: !!lastUser,
+    hasAssistant: !!lastAssistant,
+  });
   return undefined;
 }
 
@@ -83,6 +91,7 @@ export function findSessionLogFile(
 ): string | undefined {
   const claudeDir = path.join(os.homedir(), ".claude", "projects");
   if (!fs.existsSync(claudeDir)) {
+    debugLog("session-log", "lookup", { sessionId, found: false });
     return undefined;
   }
 
@@ -94,9 +103,11 @@ export function findSessionLogFile(
 
     const sessionFile = path.join(projectPath, `${sessionId}.jsonl`);
     if (fs.existsSync(sessionFile)) {
+      debugLog("session-log", "lookup", { sessionId, found: true });
       return sessionFile;
     }
   }
 
+  debugLog("session-log", "lookup", { sessionId, found: false });
   return undefined;
 }
