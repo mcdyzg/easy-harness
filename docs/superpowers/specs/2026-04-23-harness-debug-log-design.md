@@ -193,12 +193,13 @@ export function _resetDebugCache(): void {
 ### `services/hooks.ts`
 
 ```ts
-debugLog("hooks", "config-missing", { path: configPath });     // 提前返回分支
 debugLog("hooks", "event-dispatch", { event, hookCount });
 debugLog("hooks", "hook-exec",      { event, index, type, detail }); // detail = command 或 skill 名
 debugLog("hooks", "hook-ok",        { event, index, durationMs });
 debugLog("hooks", "hook-fail",      { event, index, error });
 ```
+
+注：当 `.harness/config.json` 不存在或 `hooks` 字段缺失时，`runHooks` 提前 return，这条路径**不**埋点 —— 因为 debug 标志本身也从同一 config 读取，若 config 缺失则 debug 必为 off，埋点调用只会 no-op。
 
 ### `services/polling.ts`
 
