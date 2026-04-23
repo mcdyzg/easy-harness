@@ -1,5 +1,9 @@
 import type { TodoItem } from "../types.js";
 import { buildClaudeCommand, buildCreateSessionCommand } from "./tmux.js";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { TodoStore } from "../store.js";
 
 export type RecoveryAction = "noop" | "resume" | "fresh";
 
@@ -96,4 +100,52 @@ export function ensureSessionAlive(
   deps.updateTodo(todo.id, patch);
 
   deps.log(`${new Date().toISOString()} todo=${todo.id} branch=B result=ok`);
+}
+
+export function createDefaultDeps(cwd: string): RecoveryDeps {
+  const store = new TodoStore(cwd);
+  const logPath = path.join(
+    process.env.CLAUDE_PLUGIN_ROOT ?? cwd,
+    "log",
+    "recovery.log"
+  );
+  return {
+    sessionExists: (name) => {
+      if (!name) return false;
+      try {
+        execSync(`tmux has-session -t ${JSON.stringify(name)} 2>/dev/null`, {
+          stdio: "ignore",
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    exec: (cmd) => {
+      execSync(cmd, { stdio: "pipe" });
+    },
+    capturePane: (name) => {
+      try {
+        return execSync(`tmux capture-pane -t ${JSON.stringify(name)} -p`, {
+          encoding: "utf-8",
+        });
+      } catch {
+        return "";
+      }
+    },
+    sleep: (ms) => {
+      execSync(`sleep ${ms / 1000}`);
+    },
+    updateTodo: (id, patch) => {
+      store.update(id, patch);
+    },
+    log: (line) => {
+      try {
+        fs.mkdirSync(path.dirname(logPath), { recursive: true });
+        fs.appendFileSync(logPath, line + "\n");
+      } catch {
+        // 日志失败不影响主流程
+      }
+    },
+  };
 }
