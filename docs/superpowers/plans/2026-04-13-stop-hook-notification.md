@@ -1,5 +1,7 @@
 # Stop Hook 自动通知 实现计划
 
+> ⚠️ **Superseded by 0.1.31 (on-stop-dispatch.ts)** — 本计划落地的是"派发独立 `claude -p` 会话 → 调 `harness-notice-user` skill"方案，已在 0.1.31 被 `src/scripts/on-stop-dispatch.ts` 单入口取代。当前 Stop hook 不再走 skill 路径，端到端耗时从 25–40s 降至 3–5s。本计划保留作历史参考。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 注册 Stop hook，在 harness 管理的 tmux 会话内 Claude 完成一轮响应时，派发一个独立的临时 tmux 会话执行 `harness-notice-user` skill 推送通知。

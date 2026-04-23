@@ -40,7 +40,9 @@ git clone https://github.com/mcdyzg/easy-harness.git
 
 This plugin registers a `Stop` hook automatically via `hooks/hooks.json`. No manual `settings.json` configuration is required.
 
-The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It dispatches a separate ephemeral tmux session that runs Claude with the `harness-notice-user` skill to generate and deliver a notification.
+The hook fires when Claude finishes a turn inside a tmux session whose name starts with `harness-`. It launches `src/scripts/on-stop-dispatch.ts` in the background (a single `npx tsx` process), which reads the todo, flips `running → pending`, extracts the last transcript turn, assembles a `NoticeMessage`, and either runs the configured `notice-user` hooks or falls back to a formatted console line.
+
+> Earlier versions (≤ 0.1.30) instead spawned a separate `claude -p` session to invoke the `harness-notice-user` skill. That path is still available for manual debugging but is no longer on the Stop hook's hot path — see `skills/harness-notice-user/SKILL.md` for the deprecation notice.
 
 ## Skills
 
@@ -49,7 +51,7 @@ The hook fires when Claude finishes a turn inside a tmux session whose name star
 - `/harness-todo-finish` — Mark a todo as done/failed, close its tmux session, keep the record
 - `/harness-todo-remove` — Remove a todo and kill its tmux session
 - `/harness-session-send-user-message` — Send a message to a running Claude session
-- `/harness-notice-user` — Send a notification about a todo's status
+- `/harness-notice-user` — Send a notification about a todo's status **(deprecated since 0.1.31; kept only for manual triggering — Stop hook no longer uses this skill)**
 - `/harness-todo-polling` — Start a background cron poller that serially wakes up running todos via tmux send-keys
 
 ## Customization

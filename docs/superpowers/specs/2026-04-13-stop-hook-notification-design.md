@@ -1,5 +1,7 @@
 # Stop Hook 自动通知设计
 
+> ⚠️ **Superseded by 0.1.31 (on-stop-dispatch.ts)** — 本文档描述的是"派发独立 `claude -p` 会话 → 调 `harness-notice-user` skill"的老链路。0.1.31 起 Stop hook 直接后台运行 `src/scripts/on-stop-dispatch.ts` 一次性完成读 todo / 读 transcript / 组 payload / 调 `runHooks`，不再经过任何新 Claude 会话。端到端耗时从 25–40s 降至 3–5s。本文档保留作历史参考。
+
 ## 目标
 
 当 harness 管理的 tmux 会话里 Claude 完成一轮响应（Stop 事件）时，自动派发一个独立的临时 Claude 会话，调用 `harness-notice-user` skill 生成并发送通知。

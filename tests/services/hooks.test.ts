@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { runHooks } from "../../src/services/hooks.js";
+import { runHooks, hasConfiguredHooks } from "../../src/services/hooks.js";
 import * as child_process from "node:child_process";
 
 vi.mock("node:child_process", () => ({
@@ -180,5 +180,53 @@ describe("runHooks", () => {
     const call = (child_process.execSync as ReturnType<typeof vi.fn>).mock
       .calls[0];
     expect(call[0]).toContain("harness-custom-notice-user");
+  });
+});
+
+describe("hasConfiguredHooks", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "harness-has-hooks-test-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (config: unknown) => {
+    const dir = path.join(tmpDir, ".harness");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "config.json"), JSON.stringify(config));
+  };
+
+  it("config 不存在返回 false", () => {
+    expect(hasConfiguredHooks(tmpDir, "notice-user")).toBe(false);
+  });
+
+  it("事件无配置返回 false", () => {
+    writeConfig({ hooks: { other: [{ type: "command", command: "x" }] } });
+    expect(hasConfiguredHooks(tmpDir, "notice-user")).toBe(false);
+  });
+
+  it("事件配置为空数组返回 false", () => {
+    writeConfig({ hooks: { "notice-user": [] } });
+    expect(hasConfiguredHooks(tmpDir, "notice-user")).toBe(false);
+  });
+
+  it("扁平格式存在 hook 返回 true", () => {
+    writeConfig({
+      hooks: { "notice-user": [{ type: "command", command: "x" }] },
+    });
+    expect(hasConfiguredHooks(tmpDir, "notice-user")).toBe(true);
+  });
+
+  it("嵌套格式展平后存在 hook 返回 true", () => {
+    writeConfig({
+      hooks: {
+        "notice-user": [{ hooks: [{ type: "skill", skill: "foo" }] }],
+      },
+    });
+    expect(hasConfiguredHooks(tmpDir, "notice-user")).toBe(true);
   });
 });

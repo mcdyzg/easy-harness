@@ -5,6 +5,11 @@ description: "Send a notification message about a harness todo item's status. Re
 
 # Harness Notice User
 
+> **⚠️ Deprecated（0.1.31+）**
+>
+> 自 0.1.31 起 Stop hook 直接用 `src/scripts/on-stop-dispatch.ts` 走 shell 直出路径，端到端耗时从 25–40s 降到 3–5s，**不再经过本 skill**。
+> 本 skill 仅为向后兼容保留：手工排障、旧 on-stop.sh 或第三方调用方才会走到。新链路请直接调用 dispatch 脚本，不要在提示词里拼 `调用 harness-notice-user skill`。
+
 发送 harness 待办项的状态通知。从 Claude 会话日志中提取最后一轮对话，原样透传 userMessage / assistantMessage 并推送（**不做摘要**，避免 LLM 多一轮推理）。
 
 ## 输入

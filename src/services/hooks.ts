@@ -134,3 +134,26 @@ export async function runHooks(
     }
   }
 }
+
+/**
+ * 判断指定事件是否有 hook 配置（展平后数量 > 0）
+ * 单独抽出来供调用方在执行前决定是否走 fallback 路径
+ */
+export function hasConfiguredHooks(baseDir: string, event: string): boolean {
+  const configPath = path.join(baseDir, ".harness", "config.json");
+  if (!fs.existsSync(configPath)) return false;
+  let config: HarnessConfig;
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  } catch {
+    return false;
+  }
+  const rawHooks = config.hooks?.[event];
+  if (!rawHooks || rawHooks.length === 0) return false;
+  const hooks = rawHooks.flatMap((item) =>
+    "hooks" in item && Array.isArray((item as { hooks: HookConfig[] }).hooks)
+      ? (item as { hooks: HookConfig[] }).hooks
+      : [item as HookConfig]
+  );
+  return hooks.length > 0;
+}

@@ -1,6 +1,14 @@
 #!/bin/bash
-# Stop hook —— 在 harness-* tmux 会话内 Claude 完成一轮时派发通知会话
+# Stop hook —— 在 harness-* tmux 会话内 Claude 完成一轮时把通知派发给 dispatch 入口
 # 所有失败 / 不适用情况均静默 exit 0，绝不影响主会话
+#
+# 性能约定（与旧版本的区别）：
+#   旧：起一个新 tmux 会话跑 `claude -p` 让 LLM 识别并调用 harness-notice-user skill，
+#       skill 内部又启动 4 次 `npx tsx`，再通过 runHooks 发起第二次 `claude -p`……
+#       端到端 25–40s。
+#   新：直接把上下文丢给 src/scripts/on-stop-dispatch.ts，一次 `npx tsx` 做完
+#       「读 todo → 状态流转 → 读 transcript → 组 NoticeMessage → runHooks」。
+#       端到端 3–5s。
 
 set -u
 
@@ -32,35 +40,20 @@ if [ -z "$CWD" ]; then
   exit 0
 fi
 
-# 6. 从 tmux session 名查 todoId
-TODO_ID=$(npx --yes tsx -e "
-  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.ts';
-  const store = new TodoStore(process.argv[1]);
-  const todo = store.list().find(t => t.tmuxSessionId === process.argv[2]);
-  if (todo) console.log(todo.id);
-" "$CWD" "$TMUX_SESSION" 2>/dev/null)
-
-if [ -z "$TODO_ID" ]; then
+# 6. CLAUDE_PLUGIN_ROOT 由 Claude Code 注入；缺失则静默退出
+if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
   exit 0
 fi
 
-# 7. 本轮结束 → 待办项状态置为 pending（仅当当前为 running，避免覆盖 done/failed）
+# 7. 异步派发：把剩下的活交给 dispatch 入口脚本
+# 后台执行 + stdout/stderr 重定向，避免阻塞 Stop hook，也避免污染主会话
 mkdir -p "${CLAUDE_PLUGIN_ROOT}/log" 2>/dev/null || true
-npx --yes tsx -e "
-  import { TodoStore } from '${CLAUDE_PLUGIN_ROOT}/src/store.ts';
-  const store = new TodoStore(process.argv[1]);
-  const todo = store.get(process.argv[2]);
-  if (!todo) process.exit(0);
-  if (todo.status !== 'running') process.exit(0);
-  store.update(process.argv[2], { status: 'pending' });
-" "$CWD" "$TODO_ID" 2>>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.err.log" || true
 
-# 8. 派发通知会话（名字不以 harness- 开头，避免 hook 递归触发）
-TS=$(date +%s)
-NOTICE_SESSION="notice-${TODO_ID}-${TS}"
-PROMPT="调用 harness-notice-user skill。todoId=${TODO_ID}，cwd=${CWD}，transcriptPath=${TRANSCRIPT_PATH}，pluginRoot=${CLAUDE_PLUGIN_ROOT}。执行完后直接退出，不要等待用户输入。"
-
-tmux new-session -d -s "$NOTICE_SESSION" -c "$CWD" \
-  "claude -p $(printf '%q' "$PROMPT")" 2>>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.err.log" || true
+# nohup + & 让子进程彻底脱离当前 shell（Claude Code 关 stdin 后不被 SIGHUP）
+nohup npx --yes tsx "${CLAUDE_PLUGIN_ROOT}/src/scripts/on-stop-dispatch.ts" \
+  "$CWD" "$TMUX_SESSION" "$TRANSCRIPT_PATH" \
+  >>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.out.log" \
+  2>>"${CLAUDE_PLUGIN_ROOT}/log/on-stop.err.log" \
+  </dev/null &
 
 exit 0
