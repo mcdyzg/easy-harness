@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { TodoItem } from "./types.js";
+import { debugLog } from "./utils/debug-log.js";
 
 export class TodoStore {
   private filePath: string;
@@ -45,6 +46,7 @@ export class TodoStore {
     }
     items.push(normalized);
     this.write(items);
+    debugLog("store", "add", { id: todo.id, title: todo.title, status: todo.status });
   }
 
   update(id: string, updates: Partial<Omit<TodoItem, "id">>): void {
@@ -57,10 +59,12 @@ export class TodoStore {
     }
     items[index] = merged;
     this.write(items);
+    debugLog("store", "update", { id, keys: Object.keys(updates) });
   }
 
   delete(id: string): void {
     const items = this.read().filter((item) => item.id !== id);
     this.write(items);
+    debugLog("store", "delete", { id });
   }
 }
