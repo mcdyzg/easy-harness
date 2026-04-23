@@ -84,7 +84,7 @@ try {
 
 拿到 `todo` 后，按以下顺序处理：
 
-1. **无条件将 `todo.status` 更新为 `running`**（无论当前状态是 pending/done/failed 还是已经是 running，都覆盖为 running，表示本次开始执行）：
+1. **无条件将 `todo.status` 更新为 `running`**：
 
    ```bash
    npx tsx -e "
@@ -94,44 +94,23 @@ try {
    " "<cwd>" "<todo.id>"
    ```
 
-2. `todo.tmuxSessionId` 为空 → 输出 `tmux 会话已关闭` 并终止
-3. 检测 tmux 会话是否实际存在（电脑重启等原因可能导致 tmux 会话丢失但记录未更新）：
+2. `todo.tmuxSessionId` 为空 → 输出 `tmux 会话已关闭` 并终止。
 
-```bash
-tmux has-session -t "<todo.tmuxSessionId>" 2>/dev/null
-```
+3. 自动确保 tmux 会话活着（丢失则自动 resume / 全新 spawn）：
 
-- **退出码 0** → 会话存在，继续第 4 步
-- **非零退出码** → 会话已丢失，进入第 3a 步（恢复流程）
+   ```bash
+   npx tsx -e "
+   import { TodoStore } from '<plugin-dir>/src/store.ts';
+   import { ensureSessionAlive, createDefaultDeps } from '<plugin-dir>/src/services/recovery.ts';
+   const store = new TodoStore(process.argv[1]);
+   const todo = store.get(process.argv[2]);
+   if (!todo) { console.error('todo not found'); process.exit(1); }
+   ensureSessionAlive(process.argv[1], todo, createDefaultDeps(process.argv[1]));
+   " "<cwd>" "<todo.id>"
+   ```
 
-#### 3a. 会话恢复
-
-向用户提示并确认：
-
-```
-⚠️ tmux 会话 <tmuxSessionId> 已不存在（可能因电脑重启等原因丢失）。
-是否重新创建会话并发送消息？(y/n)
-```
-
-- **用户拒绝** → 将 `todo.status` 更新为 `failed`，输出 `已将待办项状态标记为 failed` 并终止
-
-  ```bash
-  npx tsx -e "
-  import { TodoStore } from '<plugin-dir>/src/store.ts';
-  const store = new TodoStore(process.argv[1]);
-  store.update(process.argv[2], { status: 'failed' });
-  " "<cwd>" "<todo.id>"
-  ```
-
-- **用户确认** → 重新创建 tmux 会话：
-
-  ```bash
-  SESSION_NAME="<todo.claudeSessionName>"
-  TMUX_NAME="<todo.tmuxSessionId>"
-  tmux new-session -d -s "$TMUX_NAME" "claude -n '$SESSION_NAME' --remote-control '你被分配了以下任务，当用户说「开始」「执行」等指令时，立即按描述执行：<todo.description>（待办项id：<todo.id>）'"
-  ```
-
-  等待 Claude Code 启动完成后（约 2-3 秒），继续第 4 步发送消息。
+   - 退出码 0 → 会话可用，继续第 4 步
+   - 非零退出 → 把 stderr 里 `ensureSessionAlive` 抛出的信息直接展示给用户；不再自动改 `status` 为 failed（由用户决定下一步）
 
 ### 4. 构建消息并发送
 
@@ -178,5 +157,5 @@ if (!todo.firstMessageSent) {
 | 三路查找均未命中 | `LookupError` `NOT_FOUND` 的 message |
 | 确认阶段无法定位 | `LookupError` `NOT_FOUND` 的 message |
 | tmux 会话记录为空 | `tmux 会话已关闭` |
-| tmux 会话已丢失（重启等） | 提示用户是否恢复；拒绝则标记 failed |
+| tmux 会话已丢失（重启等） | 自动恢复；恢复失败时把 `ensureSessionAlive` 的错误原样展示 |
 | 发送时 tmux 报错 | tmux stderr |
