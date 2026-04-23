@@ -18,7 +18,7 @@ export function decideRecoveryAction(
 }
 
 export function buildResumeCommand(todo: TodoItem): string {
-  const inner = `claude -n '${todo.claudeSessionName}' --resume ${todo.claudeSessionId}`;
+  const inner = `claude -n '${todo.claudeSessionName}' --resume ${todo.claudeSessionId} --remote-control`;
   return `tmux new-session -d -s ${todo.tmuxSessionId} "${inner}"`;
 }
 
@@ -68,6 +68,12 @@ export function ensureSessionAlive(
     }
     deps.sleep(2000);
     if (deps.sessionExists(todo.tmuxSessionId)) {
+      // --remote-control 会为 resumed session 生成新 URL，抓取并回写
+      const pane = deps.capturePane(todo.tmuxSessionId);
+      const url = parseRemoteControlUrl(pane);
+      if (url) {
+        deps.updateTodo(todo.id, { remoteControlUrl: url });
+      }
       deps.log(
         `${new Date().toISOString()} todo=${todo.id} branch=A result=ok`
       );

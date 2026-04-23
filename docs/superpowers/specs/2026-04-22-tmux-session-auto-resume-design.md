@@ -57,17 +57,17 @@ ensureSessionAlive(cwd, todo):
   7. 写一行日志，return
 ```
 
-### 分支 A：`claude --resume`
+### 分支 A：`claude --resume --remote-control`
 
 ```bash
 tmux new-session -d -s <todo.tmuxSessionId> \
-  "claude -n '<todo.claudeSessionName>' --resume <todo.claudeSessionId>"
+  "claude -n '<todo.claudeSessionName>' --resume <todo.claudeSessionId> --remote-control"
 ```
 
-- **不带** `--remote-control`：resume 不生成新的 remote control URL
-- `remoteControlUrl` 字段保持原值不变（不再试图更新）
+- **必须带** `--remote-control`：不带时恢复出来的 session 收不到新 remote-control 消息（2026-04-23 实测修正，原设计「不带」是错的）
+- 等 Claude 启动后 `tmux capture-pane -p` 抓输出，解析 `https://claude.ai/code/session_...`，回写 `remoteControlUrl`（因为 resume 会生成新 URL）
 - `claudeSessionId` 保持原值不变
-- `firstMessageSent` 保持原值不变
+- `firstMessageSent` 保持原值不变（历史对话还在，不是新 session）
 - `SessionStart` hook 触发时看到 `todo.claudeSessionId` 已填，按既有逻辑静默跳过（`scripts/on-session-start.sh:47`）
 
 ### 分支 B：用原始 title/description 全新 spawn
@@ -127,7 +127,7 @@ tmux new-session -d -s <todo.tmuxSessionId> \
 | `tmuxSessionId` | 不变 | 不变 |
 | `claudeSessionId` | 不变 | 暂为空串，`SessionStart` hook 异步回填 |
 | `claudeSessionName` | 不变 | 不变 |
-| `remoteControlUrl` | 不变 | 重抓并更新 |
+| `remoteControlUrl` | 重抓并更新（resume 生成新 URL） | 重抓并更新 |
 | `firstMessageSent` | 不变 | 重置为 `false` |
 | `status` | 不变（保持 `running`） | 不变（保持 `running`） |
 

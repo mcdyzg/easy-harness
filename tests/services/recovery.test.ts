@@ -37,7 +37,7 @@ describe("decideRecoveryAction", () => {
 });
 
 describe("buildResumeCommand", () => {
-  it("构造 tmux new-session + claude --resume 命令（不带 --remote-control）", () => {
+  it("构造 tmux new-session + claude --resume --remote-control 命令", () => {
     const todo = mkTodo({
       tmuxSessionId: "harness-abc",
       claudeSessionId: "session_xxx",
@@ -47,7 +47,7 @@ describe("buildResumeCommand", () => {
     expect(cmd).toContain("tmux new-session -d -s harness-abc");
     expect(cmd).toContain("claude -n '[HARNESS_SESSION]t'");
     expect(cmd).toContain("--resume session_xxx");
-    expect(cmd).not.toContain("--remote-control");
+    expect(cmd).toContain("--remote-control");
   });
 });
 
@@ -154,7 +154,7 @@ describe("ensureSessionAlive", () => {
     expect(calls.filter((c) => c.startsWith("exec:")).length).toBe(0);
   });
 
-  it("有 claudeSessionId → 跑 resume 命令，不抓 URL，不改 firstMessageSent", () => {
+  it("有 claudeSessionId → 跑 resume + --remote-control 命令，抓新 URL 写回 remoteControlUrl，不改 firstMessageSent", () => {
     let callNo = 0;
     const { deps, calls, updates } = makeDeps({
       sessionExists: () => {
@@ -166,9 +166,12 @@ describe("ensureSessionAlive", () => {
     const execCalls = calls.filter((c) => c.startsWith("exec:"));
     expect(execCalls.length).toBe(1);
     expect(execCalls[0]).toContain("--resume session_xxx");
-    expect(execCalls[0]).not.toContain("--remote-control");
-    expect(calls).not.toContain("capture");
-    expect(updates["abc"]).toBeUndefined();
+    expect(execCalls[0]).toContain("--remote-control");
+    expect(calls).toContain("capture");
+    expect(updates["abc"]).toEqual({
+      remoteControlUrl: "https://claude.ai/code/session_new",
+    });
+    expect(updates["abc"]).not.toHaveProperty("firstMessageSent");
   });
 
   it("无 claudeSessionId → 跑 fresh 命令，抓 URL，重置 firstMessageSent", () => {
