@@ -3,6 +3,7 @@ import { Cron } from "croner";
 import type { TodoItem } from "../types.js";
 import { TodoStore } from "../store.js";
 import { buildSendKeysCommand } from "./tmux.js";
+import { ensureSessionAlive, createDefaultDeps } from "./recovery.js";
 
 /** polling 进程内的运行时状态。纯数据，`tick` 不会在原对象上写入 */
 export interface PollingState {
@@ -168,6 +169,17 @@ export function runPolling(opts: RunPollingOptions): void {
           break;
 
         case "trigger": {
+          const todo = store.get(action.id);
+          if (!todo) {
+            log("warn", `trigger skipped: todo ${action.id} not found`);
+            break;
+          }
+          try {
+            ensureSessionAlive(cwd, todo, createDefaultDeps(cwd));
+          } catch (e) {
+            log("error", `recovery failed for ${action.id}: ${(e as Error).message}`);
+            break;
+          }
           const cmd = buildSendKeysCommand(action.tmuxSessionId, message);
           try {
             execSync(cmd);
