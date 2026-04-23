@@ -43,23 +43,57 @@ describe("store debug-log smoke", () => {
     ...overrides,
   });
 
-  const readLog = () =>
-    fs.readFileSync(path.join(tmpDir, ".harness", "debug.log"), "utf-8");
+  const readLines = (): Record<string, unknown>[] =>
+    fs
+      .readFileSync(path.join(tmpDir, ".harness", "debug.log"), "utf-8")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
 
-  it("add emits [store] add", () => {
+  it("add emits store/add with todo context", () => {
     store.add(makeTodo());
-    expect(readLog()).toMatch(/\[store\] add id=smoke-1/);
+    const rec = readLines().find(
+      (r) => r.module === "store" && r.event === "add"
+    );
+    expect(rec).toMatchObject({
+      module: "store",
+      event: "add",
+      id: "smoke-1",
+      title: "Smoke",
+      status: "pending",
+      total: 1,
+    });
   });
 
-  it("update emits [store] update with keys list", () => {
+  it("update emits store/update with keys + patch", () => {
     store.add(makeTodo());
     store.update("smoke-1", { status: "running", tmuxSessionId: "t-1" });
-    expect(readLog()).toMatch(/\[store\] update id=smoke-1 keys=\["status","tmuxSessionId"\]/);
+    const rec = readLines().find(
+      (r) => r.module === "store" && r.event === "update"
+    );
+    expect(rec).toMatchObject({
+      module: "store",
+      event: "update",
+      id: "smoke-1",
+      keys: ["status", "tmuxSessionId"],
+      patch: { status: "running", tmuxSessionId: "t-1" },
+      prevStatus: "pending",
+      nextStatus: "running",
+    });
   });
 
-  it("delete emits [store] delete", () => {
+  it("delete emits store/delete with totals", () => {
     store.add(makeTodo());
     store.delete("smoke-1");
-    expect(readLog()).toMatch(/\[store\] delete id=smoke-1/);
+    const rec = readLines().find(
+      (r) => r.module === "store" && r.event === "delete"
+    );
+    expect(rec).toMatchObject({
+      module: "store",
+      event: "delete",
+      id: "smoke-1",
+      removed: 1,
+      total: 0,
+    });
   });
 });

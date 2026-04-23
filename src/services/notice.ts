@@ -22,9 +22,16 @@ export function formatNoticeMessage(message: NoticeMessage): string {
 export class ConsoleMessageSender implements MessageSender {
   async send(message: NoticeMessage): Promise<void> {
     debugLog("notice", "send", {
+      channel: "console",
       title: message.title,
       status: message.status,
       tmuxSessionId: message.tmuxSessionId,
+      remoteControlUrl: message.remoteControlUrl,
+      userMessageLen: message.userMessage?.length ?? 0,
+      assistantMessageLen: message.assistantMessage?.length ?? 0,
+      userMessagePreview: message.userMessage?.slice(0, 120),
+      assistantMessagePreview: message.assistantMessage?.slice(0, 120),
+      metadataKeys: message.metadata ? Object.keys(message.metadata) : [],
     });
     console.log(formatNoticeMessage(message));
   }

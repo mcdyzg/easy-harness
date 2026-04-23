@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { debugLog, _resetDebugCache } from "../../src/utils/debug-log.js";
 
-describe("debugLog", () => {
+describe("debugLog (JSONL)", () => {
   let tmpDir: string;
   let originalCwd: string;
 
@@ -25,6 +25,12 @@ describe("debugLog", () => {
   const logPath = () => path.join(tmpDir, ".harness", "debug.log");
   const writeConfig = (cfg: unknown) =>
     fs.writeFileSync(path.join(tmpDir, ".harness", "config.json"), JSON.stringify(cfg));
+  const readLines = (): Record<string, unknown>[] =>
+    fs
+      .readFileSync(logPath(), "utf-8")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
 
   it("disabled when config missing", () => {
     debugLog("mod", "evt");
@@ -49,21 +55,27 @@ describe("debugLog", () => {
     expect(fs.existsSync(logPath())).toBe(false);
   });
 
-  it("enabled when debug=true writes one line", () => {
+  it("enabled when debug=true writes one valid JSON line", () => {
     writeConfig({ debug: true });
     debugLog("mod", "evt");
     const content = fs.readFileSync(logPath(), "utf-8");
-    expect(content).toMatch(/^\[[\d:T.Z-]+\] \[mod\] evt\n$/);
+    expect(content.endsWith("\n")).toBe(true);
+    const rec = JSON.parse(content.trim());
+    expect(rec.module).toBe("mod");
+    expect(rec.event).toBe("evt");
+    expect(typeof rec.ts).toBe("string");
+    expect(rec.ts).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(typeof rec.pid).toBe("number");
   });
 
   it("appends rather than overwrites", () => {
     writeConfig({ debug: true });
     debugLog("mod", "a");
     debugLog("mod", "b");
-    const lines = fs.readFileSync(logPath(), "utf-8").trim().split("\n");
+    const lines = readLines();
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toContain("] a");
-    expect(lines[1]).toContain("] b");
+    expect(lines[0]?.event).toBe("a");
+    expect(lines[1]?.event).toBe("b");
   });
 
   it("creates .harness/ directory if missing before first write", () => {
@@ -75,58 +87,54 @@ describe("debugLog", () => {
     expect(fs.existsSync(logPath())).toBe(true);
   });
 
-  it("kv: simple string no quoting", () => {
-    writeConfig({ debug: true });
-    debugLog("m", "e", { a: "abc" });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e a=abc");
-  });
-
-  it("kv: string with space is quoted", () => {
+  it("kv: string value survives as-is", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: "a b" });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain('e a="a b"');
+    expect(readLines()[0]).toMatchObject({ a: "a b" });
   });
 
-  it("kv: string with quote escaped", () => {
+  it("kv: string with quote survives", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: 'x"y' });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain('e a="x\\"y"');
+    expect(readLines()[0]).toMatchObject({ a: 'x"y' });
   });
 
-  it("kv: empty string is quoted", () => {
+  it("kv: empty string preserved", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: "" });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain('e a=""');
+    expect(readLines()[0]).toMatchObject({ a: "" });
   });
 
-  it("kv: number and boolean unquoted", () => {
+  it("kv: number and boolean preserved", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { n: 42, b: true });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e n=42 b=true");
+    expect(readLines()[0]).toMatchObject({ n: 42, b: true });
   });
 
   it("kv: undefined is skipped", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: 1, b: undefined, c: 2 });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e a=1 c=2");
+    const rec = readLines()[0];
+    expect(rec).toMatchObject({ a: 1, c: 2 });
+    expect(Object.hasOwn(rec, "b")).toBe(false);
   });
 
-  it("kv: null rendered as null", () => {
+  it("kv: null preserved", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: null });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e a=null");
+    expect(readLines()[0]).toMatchObject({ a: null });
   });
 
-  it("kv: object serialized as JSON", () => {
+  it("kv: nested object preserved", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: { x: 1 } });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain('e a={"x":1}');
+    expect(readLines()[0]).toMatchObject({ a: { x: 1 } });
   });
 
-  it("kv: array serialized as JSON", () => {
+  it("kv: array preserved", () => {
     writeConfig({ debug: true });
     debugLog("m", "e", { a: [1, 2] });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e a=[1,2]");
+    expect(readLines()[0]).toMatchObject({ a: [1, 2] });
   });
 
   it("kv: circular reference yields <unserializable>", () => {
@@ -134,13 +142,20 @@ describe("debugLog", () => {
     const o: Record<string, unknown> = {};
     o.self = o;
     debugLog("m", "e", { a: o });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e a=<unserializable>");
+    expect(readLines()[0]).toMatchObject({ a: "<unserializable>" });
   });
 
-  it("kv: preserves insertion order", () => {
+  it("kv: reserved top-level keys (ts/pid/module/event) are prefixed with _", () => {
     writeConfig({ debug: true });
-    debugLog("m", "e", { z: 1, a: 2, m: 3 });
-    expect(fs.readFileSync(logPath(), "utf-8")).toContain("e z=1 a=2 m=3");
+    debugLog("m", "e", { ts: "custom-ts", pid: 999, module: "x", event: "y", ok: true });
+    const rec = readLines()[0];
+    expect(rec.module).toBe("m");
+    expect(rec.event).toBe("e");
+    expect(rec._ts).toBe("custom-ts");
+    expect(rec._pid).toBe(999);
+    expect(rec._module).toBe("x");
+    expect(rec._event).toBe("y");
+    expect(rec.ok).toBe(true);
   });
 
   it("survives appendFileSync throwing", () => {

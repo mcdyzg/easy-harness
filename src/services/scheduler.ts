@@ -137,7 +137,12 @@ export function runScheduler(opts: RunSchedulerOptions): void {
     process.exit(0);
   }
 
-  debugLog("scheduler", "start", { count: valid.length });
+  debugLog("scheduler", "start", {
+    cwd,
+    count: valid.length,
+    warnings,
+    names: valid.map((s) => s.name),
+  });
   log("info", `scheduler started: ${valid.length} schedules loaded`);
   for (const s of valid) {
     const detail = s.type === "skill" ? `skill: ${s.skill}` : `command: ${s.command}`;
@@ -146,6 +151,9 @@ export function runScheduler(opts: RunSchedulerOptions): void {
       cron: s.cron,
       type: s.type,
       detail,
+      skill: s.type === "skill" ? s.skill : undefined,
+      args: s.type === "skill" ? s.args : undefined,
+      command: s.type === "command" ? s.command : undefined,
     });
     log("info", `  [${s.name}] cron="${s.cron}" (${detail})`);
   }
@@ -155,7 +163,15 @@ export function runScheduler(opts: RunSchedulerOptions): void {
   for (const item of valid) {
     const job = new Cron(item.cron, () => {
       const detail = item.type === "skill" ? `skill: ${item.skill}` : `command: ${item.command}`;
-      debugLog("scheduler", "fire", { name: item.name });
+      debugLog("scheduler", "fire", {
+        name: item.name,
+        cron: item.cron,
+        type: item.type,
+        detail,
+        skill: item.type === "skill" ? item.skill : undefined,
+        args: item.type === "skill" ? item.args : undefined,
+        command: item.type === "command" ? item.command : undefined,
+      });
       log("info", `[${item.name}] triggered (${detail})`);
 
       const result = executeSchedule(item, cwd);
@@ -163,12 +179,16 @@ export function runScheduler(opts: RunSchedulerOptions): void {
       if (result.ok) {
         debugLog("scheduler", "fire-ok", {
           name: item.name,
+          type: item.type,
+          detail,
           durationMs: result.durationMs ?? 0,
         });
         log("info", `[${item.name}] completed (${result.durationMs}ms)`);
       } else {
         debugLog("scheduler", "fire-fail", {
           name: item.name,
+          type: item.type,
+          detail,
           durationMs: result.durationMs ?? 0,
           error: result.error ?? "",
         });

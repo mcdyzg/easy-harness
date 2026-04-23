@@ -147,12 +147,20 @@ export function runPolling(opts: RunPollingOptions): void {
   const { cwd, message, intervalMinutes } = opts;
   const store = new TodoStore(cwd);
 
-  let state = initialState(store.list());
+  const initialTodos = store.list();
+  let state = initialState(initialTodos);
   log("info", `polling started: cwd=${cwd} interval=${intervalMinutes}min queue=[${state.queue.join(",")}]`);
   debugLog("polling", "start", {
     cwd,
     intervalMinutes,
+    messageLen: message.length,
+    messagePreview: message.slice(0, 120),
     queue: state.queue,
+    totalTodos: initialTodos.length,
+    statusCounts: initialTodos.reduce<Record<string, number>>((acc, t) => {
+      acc[t.status] = (acc[t.status] ?? 0) + 1;
+      return acc;
+    }, {}),
   });
 
   // cron 提前声明：execute() 在 tick0 路径可能早于 new Cron 就要引用它
@@ -161,14 +169,23 @@ export function runPolling(opts: RunPollingOptions): void {
   // 单次执行：读 todos → tick → 执行 actions
   const execute = (): void => {
     const todos = store.list();
+    const focusId = state.focusIndex >= 0 ? state.queue[state.focusIndex] : undefined;
     debugLog("polling", "tick-begin", {
+      cwd,
       focusIndex: state.focusIndex,
+      focusId,
+      queue: state.queue,
       queueLen: state.queue.length,
+      seenCount: state.seen.size,
+      runningCount: todos.filter((t) => t.status === "running").length,
+      totalTodos: todos.length,
     });
     const { newState, actions } = tick(state, todos, defaultSessionExists);
     state = newState;
     debugLog("polling", "tick-decision", {
+      focusIndex: state.focusIndex,
       actions: actions.map((a) => a.type),
+      actionDetails: actions,
     });
 
     for (const action of actions) {
@@ -184,6 +201,7 @@ export function runPolling(opts: RunPollingOptions): void {
         case "trigger": {
           const todo = store.get(action.id);
           if (!todo) {
+            debugLog("polling", "trigger-miss", { id: action.id });
             log("warn", `trigger skipped: todo ${action.id} not found`);
             break;
           }
@@ -191,10 +209,24 @@ export function runPolling(opts: RunPollingOptions): void {
             id: action.id,
             tmuxSessionId: action.tmuxSessionId,
             title: action.title,
+            status: todo.status,
+            claudeSessionId: todo.claudeSessionId,
+            messageLen: message.length,
+            messagePreview: message.slice(0, 120),
           });
+          const recoveryStart = Date.now();
           try {
             ensureSessionAlive(cwd, todo, createDefaultDeps(cwd));
+            debugLog("polling", "recovery-ok", {
+              id: action.id,
+              durationMs: Date.now() - recoveryStart,
+            });
           } catch (e) {
+            debugLog("polling", "recovery-fail", {
+              id: action.id,
+              durationMs: Date.now() - recoveryStart,
+              error: (e as Error).message,
+            });
             log("error", `recovery failed for ${action.id}: ${(e as Error).message}`);
             break;
           }
@@ -204,13 +236,25 @@ export function runPolling(opts: RunPollingOptions): void {
             execSync(cmd);
             debugLog("polling", "send-keys-ok", {
               id: action.id,
+              tmuxSessionId: todo.tmuxSessionId,
+              cmd,
               durationMs: Date.now() - start,
             });
             log("info", `triggered ${action.id} (${action.title})`);
           } catch (e) {
+            const err = e as { stderr?: Buffer | string; message?: string };
+            const stderr = err?.stderr
+              ? typeof err.stderr === "string"
+                ? err.stderr
+                : err.stderr.toString("utf-8")
+              : undefined;
             debugLog("polling", "send-keys-fail", {
               id: action.id,
+              tmuxSessionId: todo.tmuxSessionId,
+              cmd,
+              durationMs: Date.now() - start,
               error: (e as Error).message,
+              stderr,
             });
             log("error", `send-keys failed for ${action.id}: ${(e as Error).message}`);
           }

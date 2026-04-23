@@ -54,7 +54,14 @@ export async function runHooks(
       : [item as HookConfig]
   );
 
-  debugLog("hooks", "event-dispatch", { event, hookCount: hooks.length });
+  debugLog("hooks", "event-dispatch", {
+    baseDir,
+    configPath,
+    event,
+    hookCount: hooks.length,
+    payloadKeys: Object.keys(payload),
+    payload,
+  });
 
   const payloadJson = JSON.stringify(payload);
 
@@ -63,25 +70,66 @@ export async function runHooks(
     const start = Date.now();
     try {
       if (hook.type === "command") {
-        debugLog("hooks", "hook-exec", { event, index: i, type: "command", detail: hook.command });
+        debugLog("hooks", "hook-exec", {
+          event,
+          index: i,
+          type: "command",
+          detail: hook.command,
+          command: hook.command,
+          payloadBytes: Buffer.byteLength(payloadJson, "utf-8"),
+        });
         execSync(hook.command, {
           input: payloadJson,
           stdio: ["pipe", "pipe", "pipe"],
         });
-        debugLog("hooks", "hook-ok", { event, index: i, durationMs: Date.now() - start });
+        debugLog("hooks", "hook-ok", {
+          event,
+          index: i,
+          type: "command",
+          durationMs: Date.now() - start,
+        });
       } else if (hook.type === "skill") {
         const skillName = hook.skill || hook.command;
         if (!skillName) continue;
-        debugLog("hooks", "hook-exec", { event, index: i, type: "skill", detail: skillName });
         const escaped = payloadJson.replace(/'/g, "'\\''");
-        execSync(`claude -p '调用 ${skillName} skill，参数：${escaped}'`, {
+        const skillCmd = `claude -p '调用 ${skillName} skill，参数：${escaped}'`;
+        debugLog("hooks", "hook-exec", {
+          event,
+          index: i,
+          type: "skill",
+          detail: skillName,
+          skill: skillName,
+          command: skillCmd,
+          payloadBytes: Buffer.byteLength(payloadJson, "utf-8"),
+        });
+        execSync(skillCmd, {
           stdio: ["pipe", "pipe", "pipe"],
         });
-        debugLog("hooks", "hook-ok", { event, index: i, durationMs: Date.now() - start });
+        debugLog("hooks", "hook-ok", {
+          event,
+          index: i,
+          type: "skill",
+          skill: skillName,
+          durationMs: Date.now() - start,
+        });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      debugLog("hooks", "hook-fail", { event, index: i, error: msg });
+      const errAny = err as { stderr?: Buffer | string; status?: number };
+      const stderr = errAny?.stderr
+        ? typeof errAny.stderr === "string"
+          ? errAny.stderr
+          : errAny.stderr.toString("utf-8")
+        : undefined;
+      debugLog("hooks", "hook-fail", {
+        event,
+        index: i,
+        type: hook.type,
+        durationMs: Date.now() - start,
+        exitCode: errAny?.status,
+        error: msg,
+        stderr,
+      });
       console.error(`[harness-hooks] ${event} hook 执行失败: ${msg}`);
     }
   }

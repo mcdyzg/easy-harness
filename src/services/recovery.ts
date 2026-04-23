@@ -59,12 +59,22 @@ export function ensureSessionAlive(
 
   const aliveNow = deps.sessionExists(todo.tmuxSessionId);
   const action = decideRecoveryAction(todo, aliveNow);
-  debugLog("recovery", "enter", { todoId: todo.id, aliveNow, action });
+  debugLog("recovery", "enter", {
+    cwd,
+    todoId: todo.id,
+    title: todo.title,
+    status: todo.status,
+    tmuxSessionId: todo.tmuxSessionId,
+    claudeSessionId: todo.claudeSessionId,
+    aliveNow,
+    action,
+  });
   if (action === "noop") return;
 
   if (action === "resume") {
     const cmd = buildResumeCommand(todo);
     debugLog("recovery", "resume-try", { todoId: todo.id, cmd });
+    const start = Date.now();
     try {
       deps.exec(cmd);
     } catch (e) {
@@ -78,13 +88,25 @@ export function ensureSessionAlive(
       if (url) {
         deps.updateTodo(todo.id, { remoteControlUrl: url });
       }
-      debugLog("recovery", "resume-ok", { todoId: todo.id, urlCaptured: !!url });
+      debugLog("recovery", "resume-ok", {
+        todoId: todo.id,
+        tmuxSessionId: todo.tmuxSessionId,
+        urlCaptured: !!url,
+        url,
+        durationMs: Date.now() - start,
+      });
       deps.log(
         `${new Date().toISOString()} todo=${todo.id} branch=A result=ok`
       );
       return;
     }
-    debugLog("recovery", "resume-fail", { todoId: todo.id, error: lastExecError });
+    debugLog("recovery", "resume-fail", {
+      todoId: todo.id,
+      tmuxSessionId: todo.tmuxSessionId,
+      cmd,
+      durationMs: Date.now() - start,
+      error: lastExecError,
+    });
     deps.log(
       `${new Date().toISOString()} todo=${todo.id} branch=A result=failed, falling back to B`
     );
@@ -94,6 +116,7 @@ export function ensureSessionAlive(
   lastExecError = "";
   const freshCmd = buildFreshSpawnCommand(todo);
   debugLog("recovery", "fresh-try", { todoId: todo.id, cmd: freshCmd });
+  const freshStart = Date.now();
   try {
     deps.exec(freshCmd);
   } catch (e) {
@@ -102,7 +125,13 @@ export function ensureSessionAlive(
   deps.sleep(2000);
   if (!deps.sessionExists(todo.tmuxSessionId)) {
     const detail = lastExecError ? `: ${lastExecError}` : "";
-    debugLog("recovery", "fresh-fail", { todoId: todo.id, error: lastExecError });
+    debugLog("recovery", "fresh-fail", {
+      todoId: todo.id,
+      tmuxSessionId: todo.tmuxSessionId,
+      cmd: freshCmd,
+      durationMs: Date.now() - freshStart,
+      error: lastExecError,
+    });
     deps.log(
       `${new Date().toISOString()} todo=${todo.id} branch=B result=failed${detail}`
     );
@@ -115,7 +144,13 @@ export function ensureSessionAlive(
   if (url) patch.remoteControlUrl = url;
   deps.updateTodo(todo.id, patch);
 
-  debugLog("recovery", "fresh-ok", { todoId: todo.id, urlCaptured: !!url });
+  debugLog("recovery", "fresh-ok", {
+    todoId: todo.id,
+    tmuxSessionId: todo.tmuxSessionId,
+    urlCaptured: !!url,
+    url,
+    durationMs: Date.now() - freshStart,
+  });
   deps.log(`${new Date().toISOString()} todo=${todo.id} branch=B result=ok`);
 }
 

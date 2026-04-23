@@ -46,25 +46,55 @@ export class TodoStore {
     }
     items.push(normalized);
     this.write(items);
-    debugLog("store", "add", { id: todo.id, title: todo.title, status: todo.status });
+    debugLog("store", "add", {
+      baseDir: this.baseDir,
+      filePath: this.filePath,
+      id: todo.id,
+      title: todo.title,
+      status: todo.status,
+      tmuxSessionId: todo.tmuxSessionId,
+      claudeSessionId: todo.claudeSessionId,
+      total: items.length,
+    });
   }
 
   update(id: string, updates: Partial<Omit<TodoItem, "id">>): void {
     const items = this.read();
     const index = items.findIndex((item) => item.id === id);
-    if (index === -1) return;
-    const merged = { ...items[index], ...updates };
+    if (index === -1) {
+      debugLog("store", "update-miss", {
+        baseDir: this.baseDir,
+        id,
+        keys: Object.keys(updates),
+      });
+      return;
+    }
+    const before = items[index];
+    const merged = { ...before, ...updates };
     if (merged.metadata && Object.keys(merged.metadata).length === 0) {
       delete merged.metadata;
     }
     items[index] = merged;
     this.write(items);
-    debugLog("store", "update", { id, keys: Object.keys(updates) });
+    debugLog("store", "update", {
+      baseDir: this.baseDir,
+      id,
+      keys: Object.keys(updates),
+      patch: updates,
+      prevStatus: before.status,
+      nextStatus: merged.status,
+    });
   }
 
   delete(id: string): void {
-    const items = this.read().filter((item) => item.id !== id);
+    const before = this.read();
+    const items = before.filter((item) => item.id !== id);
     this.write(items);
-    debugLog("store", "delete", { id });
+    debugLog("store", "delete", {
+      baseDir: this.baseDir,
+      id,
+      removed: before.length - items.length,
+      total: items.length,
+    });
   }
 }

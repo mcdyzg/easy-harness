@@ -44,26 +44,71 @@ export function parseTmuxSessionId(
   return undefined;
 }
 
+function extractStderr(e: unknown): string {
+  const err = e as { stderr?: Buffer | string; message?: string };
+  if (err?.stderr) {
+    return typeof err.stderr === "string" ? err.stderr : err.stderr.toString("utf-8");
+  }
+  return err?.message ?? String(e);
+}
+
 export function createTmuxSession(options: CreateSessionOptions): void {
   const cmd = buildCreateSessionCommand(options);
-  debugLog("tmux", "exec", { cmd });
+  debugLog("tmux", "exec", {
+    op: "create-session",
+    sessionName: options.sessionName,
+    claudeCommand: options.claudeCommand,
+    cmd,
+  });
+  const start = Date.now();
   try {
     execSync(cmd);
-    debugLog("tmux", "exec-ok", { cmd });
+    debugLog("tmux", "exec-ok", {
+      op: "create-session",
+      sessionName: options.sessionName,
+      cmd,
+      durationMs: Date.now() - start,
+    });
   } catch (e) {
-    debugLog("tmux", "exec-fail", { cmd, error: (e as Error).message });
+    debugLog("tmux", "exec-fail", {
+      op: "create-session",
+      sessionName: options.sessionName,
+      cmd,
+      durationMs: Date.now() - start,
+      error: (e as Error).message,
+      stderr: extractStderr(e),
+    });
     throw e;
   }
 }
 
 export function sendKeysToSession(sessionName: string, text: string): void {
   const cmd = buildSendKeysCommand(sessionName, text);
-  debugLog("tmux", "exec", { cmd });
+  debugLog("tmux", "exec", {
+    op: "send-keys",
+    sessionName,
+    textLen: text.length,
+    textPreview: text.slice(0, 120),
+    cmd,
+  });
+  const start = Date.now();
   try {
     execSync(cmd);
-    debugLog("tmux", "exec-ok", { cmd });
+    debugLog("tmux", "exec-ok", {
+      op: "send-keys",
+      sessionName,
+      cmd,
+      durationMs: Date.now() - start,
+    });
   } catch (e) {
-    debugLog("tmux", "exec-fail", { cmd, error: (e as Error).message });
+    debugLog("tmux", "exec-fail", {
+      op: "send-keys",
+      sessionName,
+      cmd,
+      durationMs: Date.now() - start,
+      error: (e as Error).message,
+      stderr: extractStderr(e),
+    });
     throw e;
   }
 }

@@ -32,7 +32,12 @@ export function getLastConversationTurn(
   filePath: string
 ): ConversationTurn | undefined {
   if (!fs.existsSync(filePath)) {
-    debugLog("session-log", "parse-ok", { filePath, hasUser: false, hasAssistant: false });
+    debugLog("session-log", "parse-ok", {
+      filePath,
+      exists: false,
+      hasUser: false,
+      hasAssistant: false,
+    });
     return undefined;
   }
 
@@ -73,15 +78,27 @@ export function getLastConversationTurn(
     }
 
     if (lastUser && lastAssistant) {
-      debugLog("session-log", "parse-ok", { filePath, hasUser: true, hasAssistant: true });
+      debugLog("session-log", "parse-ok", {
+        filePath,
+        exists: true,
+        lineCount: lines.length,
+        hasUser: true,
+        hasAssistant: true,
+        userLen: lastUser.length,
+        assistantLen: lastAssistant.length,
+      });
       return { userMessage: lastUser, assistantMessage: lastAssistant };
     }
   }
 
   debugLog("session-log", "parse-ok", {
     filePath,
+    exists: true,
+    lineCount: lines.length,
     hasUser: !!lastUser,
     hasAssistant: !!lastAssistant,
+    userLen: lastUser?.length ?? 0,
+    assistantLen: lastAssistant?.length ?? 0,
   });
   return undefined;
 }
@@ -91,7 +108,12 @@ export function findSessionLogFile(
 ): string | undefined {
   const claudeDir = path.join(os.homedir(), ".claude", "projects");
   if (!fs.existsSync(claudeDir)) {
-    debugLog("session-log", "lookup", { sessionId, found: false });
+    debugLog("session-log", "lookup", {
+      sessionId,
+      claudeDir,
+      claudeDirExists: false,
+      found: false,
+    });
     return undefined;
   }
 
@@ -103,11 +125,21 @@ export function findSessionLogFile(
 
     const sessionFile = path.join(projectPath, `${sessionId}.jsonl`);
     if (fs.existsSync(sessionFile)) {
-      debugLog("session-log", "lookup", { sessionId, found: true });
+      debugLog("session-log", "lookup", {
+        sessionId,
+        claudeDir,
+        filePath: sessionFile,
+        found: true,
+      });
       return sessionFile;
     }
   }
 
-  debugLog("session-log", "lookup", { sessionId, found: false });
+  debugLog("session-log", "lookup", {
+    sessionId,
+    claudeDir,
+    scanned: projectDirs.length,
+    found: false,
+  });
   return undefined;
 }

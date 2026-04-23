@@ -18,33 +18,43 @@ function resolve(baseDir: string): { enabled: boolean; logPath: string } {
   return cached;
 }
 
-function needsQuote(s: string): boolean {
-  return s.length === 0 || /[\s"=\\]/.test(s);
-}
-
-function quote(s: string): string {
-  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
-}
-
-function formatValue(v: unknown): string {
-  if (v === null) return "null";
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (typeof v === "string") return needsQuote(v) ? quote(v) : v;
+// 兜底序列化：对循环引用等不可序列化值返回占位符
+function safeClone(v: unknown): unknown {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const t = typeof v;
+  if (t === "string" || t === "number" || t === "boolean") return v;
   try {
-    return JSON.stringify(v);
+    return JSON.parse(JSON.stringify(v));
   } catch {
     return "<unserializable>";
   }
 }
 
-function formatKv(kv: Record<string, unknown>): string {
-  const parts: string[] = [];
-  for (const k of Object.keys(kv)) {
-    const v = kv[k];
-    if (v === undefined) continue;
-    parts.push(`${k}=${formatValue(v)}`);
+function buildRecord(
+  module: string,
+  event: string,
+  kv?: Record<string, unknown>
+): Record<string, unknown> {
+  const rec: Record<string, unknown> = {
+    ts: new Date().toISOString(),
+    pid: process.pid,
+    module,
+    event,
+  };
+  if (kv) {
+    for (const k of Object.keys(kv)) {
+      const v = kv[k];
+      if (v === undefined) continue;
+      // 避免顶层字段被 kv 覆盖
+      if (k === "ts" || k === "pid" || k === "module" || k === "event") {
+        rec[`_${k}`] = safeClone(v);
+      } else {
+        rec[k] = safeClone(v);
+      }
+    }
   }
-  return parts.join(" ");
+  return rec;
 }
 
 export function debugLog(
@@ -55,9 +65,22 @@ export function debugLog(
   const { enabled, logPath } = resolve(process.cwd());
   if (!enabled) return;
 
-  const ts = new Date().toISOString();
-  const kvStr = kv ? " " + formatKv(kv) : "";
-  const line = `[${ts}] [${module}] ${event}${kvStr}\n`;
+  const rec = buildRecord(module, event, kv);
+  let line: string;
+  try {
+    line = JSON.stringify(rec) + "\n";
+  } catch {
+    // 极端兜底：即便 buildRecord 已做 safeClone，也再包一层
+    line =
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        pid: process.pid,
+        module,
+        event,
+        error: "<serialize-failed>",
+      }) + "\n";
+  }
+
   try {
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
     fs.appendFileSync(logPath, line);
