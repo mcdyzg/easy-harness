@@ -3,6 +3,7 @@ import { Cron } from "croner";
 import type { TodoItem } from "../types.js";
 import { TodoStore } from "../store.js";
 import { buildSendKeysCommand } from "./tmux.js";
+import { buildFirstMessage } from "./message.js";
 import { ensureSessionAlive, createDefaultDeps } from "./recovery.js";
 import { debugLog } from "../utils/debug-log.js";
 
@@ -38,7 +39,8 @@ export type Action =
 export function tick(
   state: PollingState,
   todos: TodoItem[],
-  sessionExists: (sessionId: string) => boolean
+  // 保留形参是为了兼容测试签名；当前 tick 把 tmux 存活判断完全交给 runner
+  _sessionExists: (sessionId: string) => boolean
 ): { newState: PollingState; actions: Action[] } {
   // 1. 终止判定：全表无 running
   const anyRunning = todos.some((t) => t.status === "running");
@@ -230,17 +232,26 @@ export function runPolling(opts: RunPollingOptions): void {
             log("error", `recovery failed for ${action.id}: ${(e as Error).message}`);
             break;
           }
-          const cmd = buildSendKeysCommand(todo.tmuxSessionId, message);
+          // ensureSessionAlive 在 fresh 分支会把 firstMessageSent 重置为 false，
+          // 因此这里必须重新读取 todo 以获取最新字段，再决定是否拼接上下文前缀
+          const freshTodo = store.get(action.id) ?? todo;
+          const finalMessage = buildFirstMessage(freshTodo, message);
+          const cmd = buildSendKeysCommand(freshTodo.tmuxSessionId, finalMessage);
           const start = Date.now();
           try {
             execSync(cmd);
             debugLog("polling", "send-keys-ok", {
               id: action.id,
-              tmuxSessionId: todo.tmuxSessionId,
+              tmuxSessionId: freshTodo.tmuxSessionId,
               cmd,
               durationMs: Date.now() - start,
+              firstMessage: !freshTodo.firstMessageSent,
+              finalMessageLen: finalMessage.length,
             });
             log("info", `triggered ${action.id} (${action.title})`);
+            if (!freshTodo.firstMessageSent) {
+              store.update(action.id, { firstMessageSent: true });
+            }
           } catch (e) {
             const err = e as { stderr?: Buffer | string; message?: string };
             const stderr = err?.stderr
@@ -250,7 +261,7 @@ export function runPolling(opts: RunPollingOptions): void {
               : undefined;
             debugLog("polling", "send-keys-fail", {
               id: action.id,
-              tmuxSessionId: todo.tmuxSessionId,
+              tmuxSessionId: freshTodo.tmuxSessionId,
               cmd,
               durationMs: Date.now() - start,
               error: (e as Error).message,
